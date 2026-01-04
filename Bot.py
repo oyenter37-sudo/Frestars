@@ -5,12 +5,12 @@ import os
 import time
 import random
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # ==================== НАСТРОЙКИ ====================
 BOT_TOKEN = "8348786219:AAFW5wY-XNhpaeoEgXuuBf28UVbz7Uy8Ngk"
 
-ADMINS_USERNAMES = ["ww13kelm", "monster_psy", "venter8"]
+ADMINS_USERNAMES = ["ww13kelm", "monster_psy", "venter8", "asd123dad"]
 ADMIN_IDS = []
 
 DB_FILE = "database.json"
@@ -30,7 +30,6 @@ def load_db():
     else:
         db = {}
     
-    # Добавляем недостающие поля (совместимость со старой базой)
     if "users" not in db:
         db["users"] = {}
     if "promocodes" not in db:
@@ -55,39 +54,37 @@ def get_user(db, user_id):
     if user_id not in db["users"]:
         db["users"][user_id] = {
             "balance": 0,
+            "pieces": 0,
             "referrals": 0,
             "withdrawn": 0,
             "referrer": None,
             "last_daily": None,
+            "last_withdraw": None,
             "cooldowns": {},
             "registered": datetime.now().isoformat(),
-            "username": None
+            "username": None,
+            "premium_until": None,
+            "custom_emoji": None,
+            "custom_title": None,
+            "clicked_links": []
         }
         save_db(db)
     
-    # Добавляем недостающие поля для старых пользователей
     user = db["users"][user_id]
-    if "cooldowns" not in user:
-        user["cooldowns"] = {}
-    if "registered" not in user:
-        user["registered"] = datetime.now().isoformat()
-    if "username" not in user:
-        user["username"] = None
-    if "referrer" not in user:
-        user["referrer"] = None
-    if "referrals" not in user:
-        user["referrals"] = 0
-    if "withdrawn" not in user:
-        user["withdrawn"] = 0
-    if "last_daily" not in user:
-        user["last_daily"] = None
-    if "clicked_links" not in user:
-        user["clicked_links"] = []
+    defaults = {
+        "balance": 0, "pieces": 0, "referrals": 0, "withdrawn": 0,
+        "referrer": None, "last_daily": None, "last_withdraw": None,
+        "cooldowns": {}, "registered": datetime.now().isoformat(),
+        "username": None, "premium_until": None, "custom_emoji": None,
+        "custom_title": None, "clicked_links": []
+    }
+    for key, value in defaults.items():
+        if key not in user:
+            user[key] = value
     
     return user
 
 def update_username(db, user):
-    """Обновляет username пользователя в базе"""
     user_id = str(user.id)
     if user_id in db["users"]:
         db["users"][user_id]["username"] = user.username
@@ -96,6 +93,16 @@ def update_username(db, user):
 def is_admin(user):
     username = user.username.lower() if user.username else ""
     return username in ADMINS_USERNAMES or user.id in ADMIN_IDS
+
+def has_premium(db, user_id):
+    user = get_user(db, user_id)
+    if user["premium_until"] is None:
+        return False
+    try:
+        premium_date = datetime.fromisoformat(user["premium_until"])
+        return datetime.now() < premium_date
+    except:
+        return False
 
 user_states = {}
 
@@ -117,7 +124,6 @@ def check_subscription(user_id):
     return not_subscribed
 
 def check_links(user_id):
-    """Проверяет, перешёл ли пользователь по всем обязательным ссылкам"""
     db = load_db()
     user = get_user(db, user_id)
     links = db.get("links", {})
@@ -141,9 +147,7 @@ def subscription_required(func):
             bot.send_message(message.chat.id, "❌ Вы заблокированы в боте.")
             return
         
-        # Проверка каналов
         not_subscribed = check_subscription(message.from_user.id)
-        # Проверка ссылок
         not_clicked = check_links(message.from_user.id)
         
         if not_subscribed or not_clicked:
@@ -185,8 +189,10 @@ def subscription_required(func):
 def main_menu_keyboard(user):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("Профиль 👤", "Игры 🕹️")
-    markup.row("Вывод 🤑", "Рассылка 📢")
-    markup.row("Техподдержка 💫")
+    markup.row("🎁 Кейсы", "🏆 Топ")
+    markup.row("🖱 Кликер", "💱 Обменник")
+    markup.row("Вывод 🤑", "Премиум 🤟")
+    markup.row("Рассылка 📢", "Техподдержка 💫")
     if is_admin(user):
         markup.row("🔧 Админ-панель")
     return markup
@@ -197,16 +203,13 @@ def start_handler(message):
     user_id = str(message.from_user.id)
     user = get_user(db, user_id)
     
-    # Обновляем username
     user["username"] = message.from_user.username
     save_db(db)
     
-    # Обработка параметров start
     args = message.text.split()
     if len(args) > 1:
         param = args[1]
         
-        # Проверка на ссылку
         if param.startswith("link_"):
             link_id = param[5:]
             if link_id in db.get("links", {}):
@@ -216,29 +219,28 @@ def start_handler(message):
                     user["clicked_links"].append(link_id)
                     save_db(db)
                 
-                # Редирект на оригинальную ссылку
                 original_url = db["links"][link_id]["url"]
                 markup = types.InlineKeyboardMarkup()
                 markup.add(types.InlineKeyboardButton("🔗 Перейти", url=original_url))
                 bot.send_message(message.chat.id, "✅ Переход засчитан! Нажмите кнопку ниже:", reply_markup=markup)
                 return
         
-        # Реферальная система
         elif param.isdigit() and user["referrer"] is None:
             ref_id = param
             if ref_id != user_id and ref_id in db["users"]:
                 user["referrer"] = ref_id
-                db["users"][ref_id]["balance"] += 1
-                db["users"][ref_id]["referrals"] += 1
+                referrer = get_user(db, ref_id)
+                reward = 1.5 if has_premium(db, ref_id) else 1
+                referrer["balance"] += reward
+                referrer["referrals"] += 1
                 save_db(db)
                 try:
-                    bot.send_message(int(ref_id), "🎉 По вашей ссылке зарегистрировался новый пользователь! +1🌟")
+                    bot.send_message(int(ref_id), f"🎉 По вашей ссылке зарегистрировался новый пользователь! +{reward}🌟")
                 except:
                     pass
     
     save_db(db)
     
-    # Проверка подписки
     if not is_admin(message.from_user):
         if str(message.from_user.id) in db.get("banned", []):
             bot.send_message(message.chat.id, "❌ Вы заблокированы в боте.")
@@ -290,6 +292,7 @@ def profile_keyboard():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("🎁 Ежедневка", "🧑‍🤝‍🧑 Пригласить друга")
     markup.row("🎟 Промокод", "🌟 Пополнить")
+    markup.row("🎫 Создать промокод")
     markup.row("Назад ◀️")
     return markup
 
@@ -300,11 +303,18 @@ def profile_handler(message):
     user = get_user(db, message.from_user.id)
     update_username(db, message.from_user)
     
+    premium_status = "Неактивен"
+    if has_premium(db, message.from_user.id):
+        premium_date = datetime.fromisoformat(user["premium_until"])
+        premium_status = f"Активен до {premium_date.strftime('%d.%m.%Y %H:%M')}"
+    
     text = f"""👤 Текущая информация ℹ️
 
-💫 Звезд у тебя на балансе: {user['balance']} 🌟
+💫 Звезд на балансе: {user['balance']} 🌟
+⭐️ Кусков звезды: {user['pieces']}
 🧑‍🤝‍🧑 Приглашено друзей: {user['referrals']}
-🤑 Вывел звезд: {user['withdrawn']}"""
+🤑 Вывел звезд: {user['withdrawn']}
+👑 Премиум: {premium_status}"""
     
     bot.send_message(message.chat.id, text, reply_markup=profile_keyboard())
 
@@ -356,15 +366,14 @@ def topup_amount_handler(message):
     
     user_states.pop(message.from_user.id, None)
     
-    # Отправляем invoice для оплаты Telegram Stars
     try:
         bot.send_invoice(
             chat_id=message.chat.id,
             title=f"Пополнение на {amount} ⭐",
             description=f"Пополнение баланса в боте на {amount} звёзд",
             invoice_payload=f"topup_{message.from_user.id}_{amount}",
-            provider_token="",  # Для Telegram Stars оставляем пустым
-            currency="XTR",  # Telegram Stars
+            provider_token="",
+            currency="XTR",
             prices=[types.LabeledPrice(label=f"{amount} звёзд", amount=amount)],
             start_parameter=f"topup_{amount}"
         )
@@ -372,12 +381,10 @@ def topup_amount_handler(message):
         bot.send_message(message.chat.id, f"❌ Ошибка создания платежа: {e}")
         bot.send_message(message.chat.id, "Главное меню:", reply_markup=main_menu_keyboard(message.from_user))
 
-# Обработка pre_checkout_query
 @bot.pre_checkout_query_handler(func=lambda query: True)
 def pre_checkout_handler(pre_checkout_query):
     bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
-# Обработка успешной оплаты
 @bot.message_handler(content_types=["successful_payment"])
 def successful_payment_handler(message):
     payment = message.successful_payment
@@ -398,6 +405,74 @@ def successful_payment_handler(message):
             f"✅ Оплата успешна!\n\n💫 Начислено: {amount} 🌟\n💰 Ваш баланс: {user['balance']} 🌟",
             reply_markup=main_menu_keyboard(message.from_user)
         )
+    
+    elif payload.startswith("premium_"):
+        parts = payload.split("_")
+        user_id = parts[1]
+        days = int(parts[2])
+        
+        db = load_db()
+        user = get_user(db, user_id)
+        
+        if user["premium_until"] and has_premium(db, user_id):
+            current = datetime.fromisoformat(user["premium_until"])
+        else:
+            current = datetime.now()
+        
+        user["premium_until"] = (current + timedelta(days=days)).isoformat()
+        save_db(db)
+        
+        bot.send_message(
+            message.chat.id,
+            f"✅ Премиум активирован!\n\n👑 Премиум до: {datetime.fromisoformat(user['premium_until']).strftime('%d.%m.%Y %H:%M')}",
+            reply_markup=main_menu_keyboard(message.from_user)
+        )
+    
+    elif payload.startswith("emoji_"):
+        user_id = payload.split("_")[1]
+        user_states[int(user_id)] = "waiting_custom_emoji"
+        bot.send_message(
+            message.chat.id,
+            "✅ Оплата успешна! Теперь отправьте эмодзи, который хотите видеть в топе:"
+        )
+    
+    elif payload.startswith("title_"):
+        user_id = payload.split("_")[1]
+        user_states[int(user_id)] = "waiting_custom_title"
+        bot.send_message(
+            message.chat.id,
+            "✅ Оплата успешна! Теперь отправьте звание (до 20 символов):"
+        )
+
+# ==================== КАСТОМНЫЙ ЭМОДЗИ ====================
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "waiting_custom_emoji")
+def custom_emoji_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    user["custom_emoji"] = message.text.strip()[:5]
+    save_db(db)
+    
+    user_states.pop(message.from_user.id, None)
+    bot.send_message(
+        message.chat.id,
+        f"✅ Эмодзи установлен: {user['custom_emoji']}",
+        reply_markup=main_menu_keyboard(message.from_user)
+    )
+
+# ==================== КАСТОМНОЕ ЗВАНИЕ ====================
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "waiting_custom_title")
+def custom_title_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    user["custom_title"] = message.text.strip()[:20]
+    save_db(db)
+    
+    user_states.pop(message.from_user.id, None)
+    bot.send_message(
+        message.chat.id,
+        f"✅ Звание установлено: 「{user['custom_title']}」",
+        reply_markup=main_menu_keyboard(message.from_user)
+    )
 
 # ==================== ЕЖЕДНЕВКА ====================
 @bot.message_handler(func=lambda m: m.text == "🎁 Ежедневка")
@@ -430,7 +505,9 @@ def referral_handler(message):
     user_id = message.from_user.id
     ref_link = f"https://t.me/{BOT_USERNAME}?start={user_id}"
     
-    text = f"""🧑‍🤝‍🧑 Пригласи друга и получи 1🌟!
+    reward = "1.5🌟" if has_premium(db, user_id) else "1🌟"
+    
+    text = f"""🧑‍🤝‍🧑 Пригласи друга и получи {reward}!
 
 🔗 Твоя реферальная ссылка:
 {ref_link}
@@ -478,7 +555,17 @@ def promocode_input_handler(message):
         return
     
     user = get_user(db, user_id)
-    user["balance"] += promo["stars"]
+    
+    promo_type = promo.get("type", "stars")
+    amount = promo.get("stars", 0) if promo_type == "stars" else promo.get("pieces", 0)
+    
+    if promo_type == "stars":
+        user["balance"] += amount
+        reward_text = f"+{amount}🌟"
+    else:
+        user["pieces"] += amount
+        reward_text = f"+{amount} кусков"
+    
     promo["activations"] -= 1
     if "used_by" not in promo:
         promo["used_by"] = []
@@ -488,9 +575,493 @@ def promocode_input_handler(message):
     user_states.pop(message.from_user.id, None)
     bot.send_message(
         message.chat.id,
-        f"✅ Промокод активирован! +{promo['stars']}🌟\n💫 Ваш баланс: {user['balance']}🌟",
+        f"✅ Промокод активирован! {reward_text}\n💫 Ваш баланс: {user['balance']}🌟\n⭐️ Кусков: {user['pieces']}",
         reply_markup=profile_keyboard()
     )
+
+# ==================== СОЗДАТЬ ПРОМОКОД (ПОЛЬЗОВАТЕЛЬ) ====================
+@bot.message_handler(func=lambda m: m.text == "🎫 Создать промокод")
+@subscription_required
+def user_create_promo_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    update_username(db, message.from_user)
+    
+    user_states[message.from_user.id] = "user_create_promo_amount"
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("1000", "5000", "10000")
+    markup.row("Назад ◀️")
+    
+    text = f"""🎫 Создание промокода на куски
+
+⭐️ У вас кусков: {user['pieces']}
+
+Введите количество кусков для промокода:
+(Промокод будет на 1 активацию)"""
+    
+    bot.send_message(message.chat.id, text, reply_markup=markup)
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "user_create_promo_amount")
+@subscription_required
+def user_create_promo_amount_handler(message):
+    if message.text == "Назад ◀️":
+        user_states.pop(message.from_user.id, None)
+        profile_handler(message)
+        return
+    
+    try:
+        amount = int(message.text)
+        if amount <= 0:
+            bot.send_message(message.chat.id, "❌ Количество должно быть больше 0!")
+            return
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Введите число!")
+        return
+    
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    
+    if user["pieces"] < amount:
+        bot.send_message(message.chat.id, f"❌ Недостаточно кусков! У вас: {user['pieces']}")
+        return
+    
+    code = f"USER{random.randint(100000, 999999)}"
+    
+    user["pieces"] -= amount
+    db["promocodes"][code] = {
+        "type": "pieces",
+        "pieces": amount,
+        "activations": 1,
+        "used_by": [],
+        "creator": str(message.from_user.id)
+    }
+    save_db(db)
+    
+    user_states.pop(message.from_user.id, None)
+    bot.send_message(
+        message.chat.id,
+        f"✅ Промокод создан!\n\n🎫 Код: `{code}`\n⭐️ Кусков: {amount}\n🔢 Активаций: 1",
+        parse_mode="Markdown",
+        reply_markup=profile_keyboard()
+    )
+
+# ==================== КЛИКЕР ====================
+@bot.message_handler(func=lambda m: m.text == "🖱 Кликер")
+@subscription_required
+def clicker_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    update_username(db, message.from_user)
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🖱 КЛИК (+100 кусков)", callback_data="click"))
+    
+    text = f"""🖱 Кликер
+
+⭐️ У вас кусков: {user['pieces']}
+
+Нажимайте кнопку и получайте куски звёзд!
+За каждый клик: +100 кусков"""
+    
+    bot.send_message(message.chat.id, text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "click")
+def click_callback(call):
+    db = load_db()
+    user = get_user(db, call.from_user.id)
+    
+    user["pieces"] += 100
+    save_db(db)
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🖱 КЛИК (+100 кусков)", callback_data="click"))
+    
+    try:
+        bot.edit_message_text(
+            f"🖱 Кликер\n\n⭐️ У вас кусков: {user['pieces']}\n\n+100 кусков! 🎉",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup
+        )
+    except:
+        pass
+    
+    bot.answer_callback_query(call.id, "+100 кусков!")
+
+# ==================== ОБМЕННИК ====================
+@bot.message_handler(func=lambda m: m.text == "💱 Обменник")
+@subscription_required
+def exchange_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    update_username(db, message.from_user)
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("💱 Обменять 10,000 кусков → 1.5🌟", callback_data="exchange"))
+    
+    text = f"""💱 Обменник
+
+💫 Звёзд: {user['balance']}🌟
+⭐️ Кусков: {user['pieces']}
+
+Курс обмена: 10,000 кусков = 1.5🌟"""
+    
+    bot.send_message(message.chat.id, text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "exchange")
+def exchange_callback(call):
+    db = load_db()
+    user = get_user(db, call.from_user.id)
+    
+    if user["pieces"] < 10000:
+        bot.answer_callback_query(call.id, f"❌ Недостаточно кусков! Нужно 10,000, у вас {user['pieces']}")
+        return
+    
+    user["pieces"] -= 10000
+    user["balance"] += 1.5
+    save_db(db)
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("💱 Обменять 10,000 кусков → 1.5🌟", callback_data="exchange"))
+    
+    try:
+        bot.edit_message_text(
+            f"💱 Обменник\n\n💫 Звёзд: {user['balance']}🌟\n⭐️ Кусков: {user['pieces']}\n\n✅ Обмен успешен! +1.5🌟",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup
+        )
+    except:
+        pass
+    
+    bot.answer_callback_query(call.id, "✅ Обмен успешен! +1.5🌟")
+
+# ==================== ТОП ====================
+@bot.message_handler(func=lambda m: m.text == "🏆 Топ")
+@subscription_required
+def top_handler(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("🏆 Топ по звёздам", "👥 Топ по рефералам")
+    markup.row("Назад ◀️")
+    
+    bot.send_message(message.chat.id, "🏆 Выберите топ:", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "🏆 Топ по звёздам")
+@subscription_required
+def top_stars_handler(message):
+    db = load_db()
+    
+    users_list = []
+    for uid, udata in db["users"].items():
+        users_list.append({
+            "id": uid,
+            "username": udata.get("username"),
+            "balance": udata.get("balance", 0),
+            "premium": has_premium(db, uid),
+            "emoji": udata.get("custom_emoji"),
+            "title": udata.get("custom_title")
+        })
+    
+    users_list.sort(key=lambda x: x["balance"], reverse=True)
+    top_10 = users_list[:10]
+    
+    text = "🏆 Топ-10 по звёздам:\n\n"
+    for i, u in enumerate(top_10, 1):
+        premium_icon = "💎 " if u["premium"] else ""
+        emoji = f"{u['emoji']} " if u["emoji"] else ""
+        username = f"@{u['username']}" if u["username"] else f"ID:{u['id']}"
+        title = f"\n   「{u['title']}」" if u["title"] else ""
+        
+        text += f"{i}. {premium_icon}{emoji}{username} — {u['balance']}🌟{title}\n"
+    
+    bot.send_message(message.chat.id, text)
+
+@bot.message_handler(func=lambda m: m.text == "👥 Топ по рефералам")
+@subscription_required
+def top_refs_handler(message):
+    db = load_db()
+    
+    users_list = []
+    for uid, udata in db["users"].items():
+        users_list.append({
+            "id": uid,
+            "username": udata.get("username"),
+            "referrals": udata.get("referrals", 0),
+            "premium": has_premium(db, uid),
+            "emoji": udata.get("custom_emoji"),
+            "title": udata.get("custom_title")
+        })
+    
+    users_list.sort(key=lambda x: x["referrals"], reverse=True)
+    top_10 = users_list[:10]
+    
+    text = "👥 Топ-10 по рефералам:\n\n"
+    for i, u in enumerate(top_10, 1):
+        premium_icon = "💎 " if u["premium"] else ""
+        emoji = f"{u['emoji']} " if u["emoji"] else ""
+        username = f"@{u['username']}" if u["username"] else f"ID:{u['id']}"
+        title = f"\n   「{u['title']}」" if u["title"] else ""
+        
+        text += f"{i}. {premium_icon}{emoji}{username} — {u['referrals']} рефералов{title}\n"
+    
+    bot.send_message(message.chat.id, text)
+
+# ==================== КЕЙСЫ ====================
+@bot.message_handler(func=lambda m: m.text == "🎁 Кейсы")
+@subscription_required
+def cases_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("🗑 Кейс со свалки (1🌟)")
+    markup.row("💰 Кейс богача (20🌟)")
+    markup.row("🐻 Кейс медведя (5🌟)")
+    markup.row("⚡ Кейс СУПЕР (10🌟)")
+    markup.row("Назад ◀️")
+    
+    premium_text = " (7% с премиумом)" if has_premium(db, message.from_user.id) else " (3%)"
+    
+    text = f"""🎁 Кейсы
+
+💫 Ваш баланс: {user['balance']}🌟
+
+🗑 Кейс со свалки — 1🌟
+   0-10,000 кусков звёзд
+
+💰 Кейс богача — 20🌟
+   10% — 40🌟, 90% — 15🌟
+
+🐻 Кейс медведя — 5🌟
+   5% — 🧸 Мишка, 45% — 2🌟, 50% — ничего
+
+⚡ Кейс СУПЕР — 10🌟
+   💍 Колечко{premium_text}, 95% — ничего"""
+    
+    bot.send_message(message.chat.id, text, reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "🗑 Кейс со свалки (1🌟)")
+@subscription_required
+def case_trash_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    
+    if user["balance"] < 1:
+        bot.send_message(message.chat.id, "❌ Недостаточно звёзд!")
+        return
+    
+    user["balance"] -= 1
+    pieces_won = random.randint(0, 10000)
+    user["pieces"] += pieces_won
+    save_db(db)
+    
+    bot.send_message(message.chat.id, f"🗑 Вы открыли Кейс со свалки!\n\n⭐️ Выпало: {pieces_won} кусков звёзд!")
+
+@bot.message_handler(func=lambda m: m.text == "💰 Кейс богача (20🌟)")
+@subscription_required
+def case_rich_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    
+    if user["balance"] < 20:
+        bot.send_message(message.chat.id, "❌ Недостаточно звёзд!")
+        return
+    
+    user["balance"] -= 20
+    
+    if random.random() < 0.1:
+        win = 40
+    else:
+        win = 15
+    
+    user["balance"] += win
+    save_db(db)
+    
+    bot.send_message(message.chat.id, f"💰 Вы открыли Кейс богача!\n\n🎉 Выпало: {win}🌟!")
+
+@bot.message_handler(func=lambda m: m.text == "🐻 Кейс медведя (5🌟)")
+@subscription_required
+def case_bear_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    
+    if user["balance"] < 5:
+        bot.send_message(message.chat.id, "❌ Недостаточно звёзд!")
+        return
+    
+    user["balance"] -= 5
+    save_db(db)
+    
+    roll = random.random()
+    
+    if roll < 0.05:
+        result = "🧸 МИШКА!"
+        for admin_username in ADMINS_USERNAMES:
+            try:
+                for uid, udata in db["users"].items():
+                    if udata.get("username", "").lower() == admin_username.lower():
+                        bot.send_message(int(uid), f"🎉 ВЫИГРЫШ МИШКИ!\n\n👤 @{message.from_user.username or 'нет'}\n🆔 {message.from_user.id}")
+                        break
+            except:
+                pass
+    elif roll < 0.5:
+        result = "2🌟"
+        user["balance"] += 2
+        save_db(db)
+    else:
+        result = "Ничего 😔"
+    
+    bot.send_message(message.chat.id, f"🐻 Вы открыли Кейс медведя!\n\n🎰 Выпало: {result}")
+
+@bot.message_handler(func=lambda m: m.text == "⚡ Кейс СУПЕР (10🌟)")
+@subscription_required
+def case_super_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    
+    if user["balance"] < 10:
+        bot.send_message(message.chat.id, "❌ Недостаточно звёзд!")
+        return
+    
+    user["balance"] -= 10
+    save_db(db)
+    
+    ring_chance = 0.07 if has_premium(db, message.from_user.id) else 0.03
+    
+    if random.random() < ring_chance:
+        result = "💍 ТГ КОЛЕЧКО!"
+        for admin_username in ADMINS_USERNAMES:
+            try:
+                for uid, udata in db["users"].items():
+                    if udata.get("username", "").lower() == admin_username.lower():
+                        bot.send_message(int(uid), f"🎉 ВЫИГРЫШ КОЛЕЧКА!\n\n👤 @{message.from_user.username or 'нет'}\n🆔 {message.from_user.id}")
+                        break
+            except:
+                pass
+    else:
+        result = "Ничего 😔"
+    
+    bot.send_message(message.chat.id, f"⚡ Вы открыли Кейс СУПЕР!\n\n🎰 Выпало: {result}")
+
+# ==================== ПРЕМИУМ ====================
+def premium_keyboard():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("👑 Купить премиум")
+    markup.row("🌟 Пополнить")
+    markup.row("🎨 Купить эмодзи (3⭐️)")
+    markup.row("🏷 Купить звание (4⭐️)")
+    markup.row("Назад ◀️")
+    return markup
+
+@bot.message_handler(func=lambda m: m.text == "Премиум 🤟")
+@subscription_required
+def premium_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    
+    premium_status = "Неактивен"
+    if has_premium(db, message.from_user.id):
+        premium_date = datetime.fromisoformat(user["premium_until"])
+        premium_status = f"Активен до {premium_date.strftime('%d.%m.%Y %H:%M')}"
+    
+    text = f"""👑 Премиум подписка
+
+Статус: {premium_status}
+
+🎁 Бонусы премиума:
+• 💎 Алмаз в топе рядом с ником
+• 💍 Шанс на колечко в Кейсе СУПЕР: 3% → 7%
+• 🎮 Шанс победы в играх: +1.2%
+• 👥 Награда за реферала: 1🌟 → 1.5🌟
+• 📊 Доступ к статистике бота
+• 💖 Поддержка автора
+
+💰 Цена: 5⭐️ / день (реальные Telegram Stars)"""
+    
+    bot.send_message(message.chat.id, text, reply_markup=premium_keyboard())
+
+@bot.message_handler(func=lambda m: m.text == "👑 Купить премиум")
+@subscription_required
+def buy_premium_handler(message):
+    user_states[message.from_user.id] = "waiting_premium_days"
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("1", "3", "7")
+    markup.row("14", "30")
+    markup.row("Назад ◀️")
+    
+    bot.send_message(
+        message.chat.id,
+        "👑 На сколько дней купить премиум?\n\n💰 Цена: 5⭐️ за день",
+        reply_markup=markup
+    )
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "waiting_premium_days")
+@subscription_required
+def premium_days_handler(message):
+    if message.text == "Назад ◀️":
+        user_states.pop(message.from_user.id, None)
+        premium_handler(message)
+        return
+    
+    try:
+        days = int(message.text)
+        if days < 1:
+            bot.send_message(message.chat.id, "❌ Минимум 1 день!")
+            return
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Введите число!")
+        return
+    
+    user_states.pop(message.from_user.id, None)
+    price = days * 5
+    
+    try:
+        bot.send_invoice(
+            chat_id=message.chat.id,
+            title=f"Премиум на {days} дней",
+            description=f"Премиум подписка в боте на {days} дней",
+            invoice_payload=f"premium_{message.from_user.id}_{days}",
+            provider_token="",
+            currency="XTR",
+            prices=[types.LabeledPrice(label=f"Премиум {days} дней", amount=price)],
+            start_parameter=f"premium_{days}"
+        )
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
+@bot.message_handler(func=lambda m: m.text == "🎨 Купить эмодзи (3⭐️)")
+@subscription_required
+def buy_emoji_handler(message):
+    try:
+        bot.send_invoice(
+            chat_id=message.chat.id,
+            title="Эмодзи для топа",
+            description="Кастомный эмодзи рядом с вашим ником в топе",
+            invoice_payload=f"emoji_{message.from_user.id}",
+            provider_token="",
+            currency="XTR",
+            prices=[types.LabeledPrice(label="Эмодзи", amount=3)],
+            start_parameter="emoji"
+        )
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
+@bot.message_handler(func=lambda m: m.text == "🏷 Купить звание (4⭐️)")
+@subscription_required
+def buy_title_handler(message):
+    try:
+        bot.send_invoice(
+            chat_id=message.chat.id,
+            title="Звание для топа",
+            description="Кастомное звание под вашим ником в топе",
+            invoice_payload=f"title_{message.from_user.id}",
+            provider_token="",
+            currency="XTR",
+            prices=[types.LabeledPrice(label="Звание", amount=4)],
+            start_parameter="title"
+        )
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
 # ==================== ИГРЫ ====================
 def games_keyboard():
@@ -527,7 +1098,9 @@ def games_handler(message):
 🎳 Боулинг: страйк = +2.5🌟, иначе -0.5🌟
 🏀 Баскетбол: попал = +2.0🌟, иначе -0.5🌟
 ⚽ Футбол: гол = +1.0🌟, иначе -0.5🌟
-🦔 Пнуть ежа: 50% +200% ставки / 50% -ставка"""
+🦔 Пнуть ежа: 50% +200% ставки / 50% -ставка
+
+👑 Премиум: +1.2% к шансу победы"""
     
     bot.send_message(message.chat.id, text, reply_markup=games_keyboard())
 
@@ -564,7 +1137,14 @@ def game_handler(message):
     db = load_db()
     user = get_user(db, user_id)
     
-    if value in game_config["win_values"]:
+    win_values = game_config["win_values"].copy()
+    
+    if has_premium(db, user_id):
+        extra_chance = 0.012
+        if random.random() < extra_chance:
+            win_values = list(range(1, 100))
+    
+    if value in win_values:
         user["balance"] += game_config["win_reward"]
         result_text = f"🎉 Победа! +{game_config['win_reward']}🌟\n💫 Баланс: {user['balance']}🌟"
     else:
@@ -585,7 +1165,6 @@ def hedgehog_handler(message):
     user = get_user(db, message.from_user.id)
     update_username(db, message.from_user)
     
-    # Проверка кулдауна
     cooldowns = user.get("cooldowns", {})
     last_play = cooldowns.get("hedgehog", 0)
     now = time.time()
@@ -638,15 +1217,14 @@ def hedgehog_bet_handler(message):
     
     user_states.pop(message.from_user.id, None)
     
-    # Обновляем кулдаун
     user["cooldowns"]["hedgehog"] = time.time()
     save_db(db)
     
-    # Игра
     bot.send_message(message.chat.id, "🦶 Вы замахиваетесь на ежа...")
     time.sleep(2)
     
-    win = random.random() < 0.5
+    win_chance = 0.512 if has_premium(db, user_id) else 0.5
+    win = random.random() < win_chance
     
     db = load_db()
     user = get_user(db, user_id)
@@ -682,7 +1260,7 @@ def support_handler(message):
 # ==================== ВЫВОД ====================
 def withdraw_keyboard():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.row("💫 Вывести 50🌟", "💫 Вывести 100🌟")
+    markup.row("💫 Вывести 500🌟", "💫 Вывести 1000🌟")
     markup.row("Назад ◀️")
     return markup
 
@@ -693,12 +1271,26 @@ def withdraw_handler(message):
     user = get_user(db, message.from_user.id)
     update_username(db, message.from_user)
     
-    if user["balance"] < 50:
+    if user["balance"] < 500:
         bot.send_message(
             message.chat.id,
-            f"❌ Для вывода нужно минимум 50🌟\n💫 Ваш баланс: {user['balance']}🌟"
+            f"❌ Для вывода нужно минимум 500🌟\n💫 Ваш баланс: {user['balance']}🌟"
         )
         return
+    
+    if user["last_withdraw"]:
+        try:
+            last_withdraw_date = datetime.fromisoformat(user["last_withdraw"])
+            days_passed = (datetime.now() - last_withdraw_date).days
+            if days_passed < 7:
+                days_left = 7 - days_passed
+                bot.send_message(
+                    message.chat.id,
+                    f"❌ Вывод доступен раз в неделю!\n⏳ Осталось дней: {days_left}"
+                )
+                return
+        except:
+            pass
     
     text = f"""🤑 Вывод звёзд
 
@@ -708,7 +1300,7 @@ def withdraw_handler(message):
     
     bot.send_message(message.chat.id, text, reply_markup=withdraw_keyboard())
 
-@bot.message_handler(func=lambda m: m.text in ["💫 Вывести 50🌟", "💫 Вывести 100🌟"])
+@bot.message_handler(func=lambda m: m.text in ["💫 Вывести 500🌟", "💫 Вывести 1000🌟"])
 @subscription_required
 def withdraw_amount_handler(message):
     db = load_db()
@@ -716,11 +1308,25 @@ def withdraw_amount_handler(message):
     user = get_user(db, user_id)
     update_username(db, message.from_user)
     
-    amount = 50 if "50" in message.text else 100
+    amount = 500 if "500" in message.text else 1000
     
     if user["balance"] < amount:
         bot.send_message(message.chat.id, f"❌ Недостаточно звёзд! Нужно {amount}🌟, у вас {user['balance']}🌟")
         return
+    
+    if user["last_withdraw"]:
+        try:
+            last_withdraw_date = datetime.fromisoformat(user["last_withdraw"])
+            days_passed = (datetime.now() - last_withdraw_date).days
+            if days_passed < 7:
+                days_left = 7 - days_passed
+                bot.send_message(
+                    message.chat.id,
+                    f"❌ Вывод доступен раз в неделю!\n⏳ Осталось дней: {days_left}"
+                )
+                return
+        except:
+            pass
     
     withdrawal_id = str(int(time.time() * 1000))
     
@@ -737,6 +1343,7 @@ def withdraw_amount_handler(message):
     }
     
     user["balance"] -= amount
+    user["last_withdraw"] = datetime.now().isoformat()
     save_db(db)
     
     admin_text = f"""📥 Новая заявка на вывод!
@@ -833,6 +1440,7 @@ def withdrawal_callback(call):
             withdrawal["status"] = "declined"
             user = get_user(db, withdrawal["user_id"])
             user["balance"] += withdrawal["amount"]
+            user["last_withdraw"] = None
             save_db(db)
             
             try:
@@ -952,6 +1560,7 @@ def admin_keyboard():
     markup.row("➖ Убрать звёзды", "🎟 Создать промокод")
     markup.row("📢 Админ-рассылка", "📊 Статистика")
     markup.row("📺 Каналы", "🔗 Ссылки")
+    markup.row("👑 Премиум себе")
     markup.row("Назад ◀️")
     return markup
 
@@ -964,27 +1573,79 @@ def admin_panel_handler(message):
 
 @bot.message_handler(func=lambda m: m.text == "📊 Статистика")
 def stats_handler(message):
-    if not is_admin(message.from_user):
+    db = load_db()
+    
+    if not is_admin(message.from_user) and not has_premium(db, message.from_user.id):
+        bot.send_message(message.chat.id, "❌ Статистика доступна только для премиум-пользователей!")
         return
     
-    db = load_db()
     total_users = len(db["users"])
     total_balance = sum(u.get("balance", 0) for u in db["users"].values())
+    total_pieces = sum(u.get("pieces", 0) for u in db["users"].values())
     total_withdrawn = sum(u.get("withdrawn", 0) for u in db["users"].values())
     banned_count = len(db.get("banned", []))
     channels_count = len(db.get("channels", []))
     links_count = len(db.get("links", {}))
+    premium_count = sum(1 for uid in db["users"] if has_premium(db, uid))
     
     text = f"""📊 Статистика бота
 
 👥 Всего пользователей: {total_users}
+👑 С премиумом: {premium_count}
 🚫 Заблокировано: {banned_count}
 💫 Всего звёзд на балансах: {total_balance}🌟
+⭐️ Всего кусков: {total_pieces}
 🤑 Всего выведено: {total_withdrawn}🌟
 📺 Каналов для подписки: {channels_count}
 🔗 Обязательных ссылок: {links_count}"""
     
     bot.send_message(message.chat.id, text)
+
+@bot.message_handler(func=lambda m: m.text == "👑 Премиум себе")
+def admin_premium_handler(message):
+    if not is_admin(message.from_user):
+        return
+    
+    user_states[message.from_user.id] = "admin_premium_days"
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("30", "90", "365")
+    markup.row("Назад ◀️")
+    
+    bot.send_message(message.chat.id, "👑 На сколько дней выдать себе премиум?", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "admin_premium_days")
+def admin_premium_days_handler(message):
+    if message.text == "Назад ◀️":
+        user_states.pop(message.from_user.id, None)
+        bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=admin_keyboard())
+        return
+    
+    try:
+        days = int(message.text)
+        if days < 1:
+            bot.send_message(message.chat.id, "❌ Минимум 1 день!")
+            return
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Введите число!")
+        return
+    
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    
+    if user["premium_until"] and has_premium(db, message.from_user.id):
+        current = datetime.fromisoformat(user["premium_until"])
+    else:
+        current = datetime.now()
+    
+    user["premium_until"] = (current + timedelta(days=days)).isoformat()
+    save_db(db)
+    
+    user_states.pop(message.from_user.id, None)
+    bot.send_message(
+        message.chat.id,
+        f"✅ Премиум активирован на {days} дней!\n👑 До: {datetime.fromisoformat(user['premium_until']).strftime('%d.%m.%Y %H:%M')}",
+        reply_markup=admin_keyboard()
+    )
 
 # ==================== УПРАВЛЕНИЕ КАНАЛАМИ ====================
 @bot.message_handler(func=lambda m: m.text == "📺 Каналы")
@@ -1171,7 +1832,6 @@ def add_link_url_handler(message):
     url = message.text.strip()
     name = user_states[message.from_user.id]["name"]
     
-    # Генерируем уникальный ID для ссылки
     link_id = hashlib.md5(f"{url}{time.time()}".encode()).hexdigest()[:8]
     
     db = load_db()
@@ -1188,7 +1848,7 @@ def add_link_url_handler(message):
     
     bot.send_message(
         message.chat.id,
-        f"✅ Ссылка добавлена!\n\n📝 Название: {name}\n🔗 URL: {url}\n\n📊 Трекинговая ссылка (для отслеживания):\n{tracking_url}"
+        f"✅ Ссылка добавлена!\n\n📝 Название: {name}\n🔗 URL: {url}\n\n📊 Трекинговая ссылка:\n{tracking_url}"
     )
     links_handler(message)
 
@@ -1333,13 +1993,17 @@ def check_balance_input_handler(message):
         return
     
     user = db["users"][target_id]
+    premium_status = "Да" if has_premium(db, target_id) else "Нет"
+    
     text = f"""💰 Информация о пользователе
 
 🆔 ID: {target_id}
 👤 Username: @{user.get('username') or 'нет'}
 💫 Баланс: {user.get('balance', 0)}🌟
+⭐️ Кусков: {user.get('pieces', 0)}
 🧑‍🤝‍🧑 Рефералов: {user.get('referrals', 0)}
-🤑 Выведено: {user.get('withdrawn', 0)}🌟"""
+🤑 Выведено: {user.get('withdrawn', 0)}🌟
+👑 Премиум: {premium_status}"""
     
     bot.send_message(message.chat.id, text)
     user_states.pop(message.from_user.id, None)
@@ -1439,12 +2103,32 @@ def create_promo_handler(message):
     if not is_admin(message.from_user):
         return
     
-    user_states[message.from_user.id] = "admin_create_promo"
+    user_states[message.from_user.id] = "admin_create_promo_type"
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("⭐️ На звёзды", "🔸 На куски")
+    markup.row("Назад ◀️")
+    
+    bot.send_message(message.chat.id, "🎟 Выберите тип промокода:", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "admin_create_promo_type")
+def create_promo_type_handler(message):
+    if message.text == "Назад ◀️":
+        user_states.pop(message.from_user.id, None)
+        bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=admin_keyboard())
+        return
+    
+    if message.text == "⭐️ На звёзды":
+        user_states[message.from_user.id] = {"state": "admin_create_promo", "type": "stars"}
+    elif message.text == "🔸 На куски":
+        user_states[message.from_user.id] = {"state": "admin_create_promo", "type": "pieces"}
+    else:
+        return
+    
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("Назад ◀️")
-    bot.send_message(message.chat.id, "Введите: КОД ЗВЁЗДЫ АКТИВАЦИИ\nПример: BONUS 10 100", reply_markup=markup)
+    bot.send_message(message.chat.id, "Введите: КОД КОЛИЧЕСТВО АКТИВАЦИИ\nПример: BONUS 10 100", reply_markup=markup)
 
-@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "admin_create_promo")
+@bot.message_handler(func=lambda m: isinstance(user_states.get(m.from_user.id), dict) and user_states.get(m.from_user.id, {}).get("state") == "admin_create_promo")
 def create_promo_input_handler(message):
     if message.text == "Назад ◀️":
         user_states.pop(message.from_user.id, None)
@@ -1454,22 +2138,36 @@ def create_promo_input_handler(message):
     try:
         parts = message.text.strip().split()
         code = parts[0].upper()
-        stars = float(parts[1])
+        amount = float(parts[1])
         activations = int(parts[2])
     except:
         bot.send_message(message.chat.id, "❌ Неверный формат! Пример: BONUS 10 100")
         return
     
+    promo_type = user_states[message.from_user.id]["type"]
+    
     db = load_db()
     
-    db["promocodes"][code] = {
-        "stars": stars,
-        "activations": activations,
-        "used_by": []
-    }
+    if promo_type == "stars":
+        db["promocodes"][code] = {
+            "type": "stars",
+            "stars": amount,
+            "activations": activations,
+            "used_by": []
+        }
+        reward_text = f"{amount}🌟"
+    else:
+        db["promocodes"][code] = {
+            "type": "pieces",
+            "pieces": int(amount),
+            "activations": activations,
+            "used_by": []
+        }
+        reward_text = f"{int(amount)} кусков"
+    
     save_db(db)
     
-    bot.send_message(message.chat.id, f"✅ Промокод создан!\n\n🎟 Код: {code}\n💫 Звёзд: {stars}🌟\n🔢 Активаций: {activations}")
+    bot.send_message(message.chat.id, f"✅ Промокод создан!\n\n🎟 Код: {code}\n🎁 Награда: {reward_text}\n🔢 Активаций: {activations}")
     
     user_states.pop(message.from_user.id, None)
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=admin_keyboard())
