@@ -3,29 +3,48 @@ from telebot import types
 import json
 import os
 import time
+import random
+import hashlib
 from datetime import datetime
 
 # ==================== НАСТРОЙКИ ====================
 BOT_TOKEN = "8348786219:AAFW5wY-XNhpaeoEgXuuBf28UVbz7Uy8Ngk"
-BOT_USERNAME = "giftskelms_bot"
 
 ADMINS_USERNAMES = ["ww13kelm", "monster_psy", "venter8"]
 ADMIN_IDS = []
 
 DB_FILE = "database.json"
 
+# ==================== БОТ ====================
+bot = telebot.TeleBot(BOT_TOKEN)
+BOT_USERNAME = bot.get_me().username
+BOT_ID = bot.get_me().id
+
+print(f"🤖 Бот @{BOT_USERNAME} загружен!")
+
 # ==================== БАЗА ДАННЫХ ====================
 def load_db():
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {
-        "users": {},
-        "promocodes": {},
-        "withdrawals": {},
-        "banned": [],
-        "channels": []
-    }
+            db = json.load(f)
+    else:
+        db = {}
+    
+    # Добавляем недостающие поля (совместимость со старой базой)
+    if "users" not in db:
+        db["users"] = {}
+    if "promocodes" not in db:
+        db["promocodes"] = {}
+    if "withdrawals" not in db:
+        db["withdrawals"] = {}
+    if "banned" not in db:
+        db["banned"] = []
+    if "channels" not in db:
+        db["channels"] = []
+    if "links" not in db:
+        db["links"] = {}
+    
+    return db
 
 def save_db(db):
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -45,14 +64,39 @@ def get_user(db, user_id):
             "username": None
         }
         save_db(db)
-    return db["users"][user_id]
+    
+    # Добавляем недостающие поля для старых пользователей
+    user = db["users"][user_id]
+    if "cooldowns" not in user:
+        user["cooldowns"] = {}
+    if "registered" not in user:
+        user["registered"] = datetime.now().isoformat()
+    if "username" not in user:
+        user["username"] = None
+    if "referrer" not in user:
+        user["referrer"] = None
+    if "referrals" not in user:
+        user["referrals"] = 0
+    if "withdrawn" not in user:
+        user["withdrawn"] = 0
+    if "last_daily" not in user:
+        user["last_daily"] = None
+    if "clicked_links" not in user:
+        user["clicked_links"] = []
+    
+    return user
+
+def update_username(db, user):
+    """Обновляет username пользователя в базе"""
+    user_id = str(user.id)
+    if user_id in db["users"]:
+        db["users"][user_id]["username"] = user.username
+        save_db(db)
 
 def is_admin(user):
     username = user.username.lower() if user.username else ""
     return username in ADMINS_USERNAMES or user.id in ADMIN_IDS
 
-# ==================== БОТ ====================
-bot = telebot.TeleBot(BOT_TOKEN)
 user_states = {}
 
 # ==================== ПРОВЕРКА ПОДПИСКИ ====================
@@ -66,26 +110,47 @@ def check_subscription(user_id):
             member = bot.get_chat_member(channel, user_id)
             if member.status in ["left", "kicked"]:
                 chat = bot.get_chat(channel)
-                not_subscribed.append(chat)
+                not_subscribed.append({"type": "channel", "data": chat})
         except:
             pass
     
     return not_subscribed
 
+def check_links(user_id):
+    """Проверяет, перешёл ли пользователь по всем обязательным ссылкам"""
+    db = load_db()
+    user = get_user(db, user_id)
+    links = db.get("links", {})
+    not_clicked = []
+    
+    for link_id, link_data in links.items():
+        if link_id not in user.get("clicked_links", []):
+            not_clicked.append({"id": link_id, "url": link_data["url"], "name": link_data.get("name", "Ссылка")})
+    
+    return not_clicked
+
 def subscription_required(func):
     def wrapper(message):
+        db = load_db()
+        update_username(db, message.from_user)
+        
         if is_admin(message.from_user):
             return func(message)
         
-        db = load_db()
         if str(message.from_user.id) in db.get("banned", []):
             bot.send_message(message.chat.id, "❌ Вы заблокированы в боте.")
             return
         
+        # Проверка каналов
         not_subscribed = check_subscription(message.from_user.id)
-        if not_subscribed:
+        # Проверка ссылок
+        not_clicked = check_links(message.from_user.id)
+        
+        if not_subscribed or not_clicked:
             markup = types.InlineKeyboardMarkup()
-            for chat in not_subscribed:
+            
+            for item in not_subscribed:
+                chat = item["data"]
                 if chat.username:
                     markup.add(types.InlineKeyboardButton(
                         f"📢 {chat.title}",
@@ -96,11 +161,19 @@ def subscription_required(func):
                         f"📢 {chat.title}",
                         url=chat.invite_link
                     ))
+            
+            for link in not_clicked:
+                tracking_url = f"https://t.me/{BOT_USERNAME}?start=link_{link['id']}"
+                markup.add(types.InlineKeyboardButton(
+                    f"🔗 {link['name']}",
+                    url=tracking_url
+                ))
+            
             markup.add(types.InlineKeyboardButton("✅ Проверить подписку", callback_data="check_sub"))
             
             bot.send_message(
                 message.chat.id,
-                "❌ Для использования бота подпишитесь на каналы:",
+                "❌ Для использования бота выполните условия:",
                 reply_markup=markup
             )
             return
@@ -119,28 +192,92 @@ def main_menu_keyboard(user):
     return markup
 
 @bot.message_handler(commands=["start"])
-@subscription_required
 def start_handler(message):
     db = load_db()
     user_id = str(message.from_user.id)
     user = get_user(db, user_id)
     
+    # Обновляем username
     user["username"] = message.from_user.username
+    save_db(db)
     
+    # Обработка параметров start
     args = message.text.split()
-    if len(args) > 1 and user["referrer"] is None:
-        ref_id = args[1]
-        if ref_id != user_id and ref_id in db["users"]:
-            user["referrer"] = ref_id
-            db["users"][ref_id]["balance"] += 1
-            db["users"][ref_id]["referrals"] += 1
-            save_db(db)
-            try:
-                bot.send_message(int(ref_id), "🎉 По вашей ссылке зарегистрировался новый пользователь! +1🌟")
-            except:
-                pass
+    if len(args) > 1:
+        param = args[1]
+        
+        # Проверка на ссылку
+        if param.startswith("link_"):
+            link_id = param[5:]
+            if link_id in db.get("links", {}):
+                if "clicked_links" not in user:
+                    user["clicked_links"] = []
+                if link_id not in user["clicked_links"]:
+                    user["clicked_links"].append(link_id)
+                    save_db(db)
+                
+                # Редирект на оригинальную ссылку
+                original_url = db["links"][link_id]["url"]
+                markup = types.InlineKeyboardMarkup()
+                markup.add(types.InlineKeyboardButton("🔗 Перейти", url=original_url))
+                bot.send_message(message.chat.id, "✅ Переход засчитан! Нажмите кнопку ниже:", reply_markup=markup)
+                return
+        
+        # Реферальная система
+        elif param.isdigit() and user["referrer"] is None:
+            ref_id = param
+            if ref_id != user_id and ref_id in db["users"]:
+                user["referrer"] = ref_id
+                db["users"][ref_id]["balance"] += 1
+                db["users"][ref_id]["referrals"] += 1
+                save_db(db)
+                try:
+                    bot.send_message(int(ref_id), "🎉 По вашей ссылке зарегистрировался новый пользователь! +1🌟")
+                except:
+                    pass
     
     save_db(db)
+    
+    # Проверка подписки
+    if not is_admin(message.from_user):
+        if str(message.from_user.id) in db.get("banned", []):
+            bot.send_message(message.chat.id, "❌ Вы заблокированы в боте.")
+            return
+        
+        not_subscribed = check_subscription(message.from_user.id)
+        not_clicked = check_links(message.from_user.id)
+        
+        if not_subscribed or not_clicked:
+            markup = types.InlineKeyboardMarkup()
+            
+            for item in not_subscribed:
+                chat = item["data"]
+                if chat.username:
+                    markup.add(types.InlineKeyboardButton(
+                        f"📢 {chat.title}",
+                        url=f"https://t.me/{chat.username}"
+                    ))
+                elif chat.invite_link:
+                    markup.add(types.InlineKeyboardButton(
+                        f"📢 {chat.title}",
+                        url=chat.invite_link
+                    ))
+            
+            for link in not_clicked:
+                tracking_url = f"https://t.me/{BOT_USERNAME}?start=link_{link['id']}"
+                markup.add(types.InlineKeyboardButton(
+                    f"🔗 {link['name']}",
+                    url=tracking_url
+                ))
+            
+            markup.add(types.InlineKeyboardButton("✅ Проверить", callback_data="check_sub"))
+            
+            bot.send_message(
+                message.chat.id,
+                "❌ Для использования бота выполните условия:",
+                reply_markup=markup
+            )
+            return
     
     bot.send_message(
         message.chat.id,
@@ -152,7 +289,7 @@ def start_handler(message):
 def profile_keyboard():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("🎁 Ежедневка", "🧑‍🤝‍🧑 Пригласить друга")
-    markup.row("🎟 Промокод")
+    markup.row("🎟 Промокод", "🌟 Пополнить")
     markup.row("Назад ◀️")
     return markup
 
@@ -161,6 +298,7 @@ def profile_keyboard():
 def profile_handler(message):
     db = load_db()
     user = get_user(db, message.from_user.id)
+    update_username(db, message.from_user)
     
     text = f"""👤 Текущая информация ℹ️
 
@@ -180,12 +318,94 @@ def back_handler(message):
         reply_markup=main_menu_keyboard(message.from_user)
     )
 
+# ==================== ПОПОЛНЕНИЕ ====================
+@bot.message_handler(func=lambda m: m.text == "🌟 Пополнить")
+@subscription_required
+def topup_handler(message):
+    user_states[message.from_user.id] = "waiting_topup_amount"
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("10", "50", "100")
+    markup.row("250", "500", "1000")
+    markup.row("Назад ◀️")
+    
+    bot.send_message(
+        message.chat.id,
+        "🌟 Пополнение баланса\n\nВведите сумму звёзд для пополнения или выберите из предложенных:",
+        reply_markup=markup
+    )
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "waiting_topup_amount")
+@subscription_required
+def topup_amount_handler(message):
+    if message.text == "Назад ◀️":
+        user_states.pop(message.from_user.id, None)
+        profile_handler(message)
+        return
+    
+    try:
+        amount = int(message.text)
+        if amount < 1:
+            bot.send_message(message.chat.id, "❌ Минимальная сумма: 1 звезда")
+            return
+        if amount > 10000:
+            bot.send_message(message.chat.id, "❌ Максимальная сумма: 10000 звёзд")
+            return
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Введите число!")
+        return
+    
+    user_states.pop(message.from_user.id, None)
+    
+    # Отправляем invoice для оплаты Telegram Stars
+    try:
+        bot.send_invoice(
+            chat_id=message.chat.id,
+            title=f"Пополнение на {amount} ⭐",
+            description=f"Пополнение баланса в боте на {amount} звёзд",
+            invoice_payload=f"topup_{message.from_user.id}_{amount}",
+            provider_token="",  # Для Telegram Stars оставляем пустым
+            currency="XTR",  # Telegram Stars
+            prices=[types.LabeledPrice(label=f"{amount} звёзд", amount=amount)],
+            start_parameter=f"topup_{amount}"
+        )
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка создания платежа: {e}")
+        bot.send_message(message.chat.id, "Главное меню:", reply_markup=main_menu_keyboard(message.from_user))
+
+# Обработка pre_checkout_query
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def pre_checkout_handler(pre_checkout_query):
+    bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+# Обработка успешной оплаты
+@bot.message_handler(content_types=["successful_payment"])
+def successful_payment_handler(message):
+    payment = message.successful_payment
+    payload = payment.invoice_payload
+    
+    if payload.startswith("topup_"):
+        parts = payload.split("_")
+        user_id = parts[1]
+        amount = int(parts[2])
+        
+        db = load_db()
+        user = get_user(db, user_id)
+        user["balance"] += amount
+        save_db(db)
+        
+        bot.send_message(
+            message.chat.id,
+            f"✅ Оплата успешна!\n\n💫 Начислено: {amount} 🌟\n💰 Ваш баланс: {user['balance']} 🌟",
+            reply_markup=main_menu_keyboard(message.from_user)
+        )
+
 # ==================== ЕЖЕДНЕВКА ====================
 @bot.message_handler(func=lambda m: m.text == "🎁 Ежедневка")
 @subscription_required
 def daily_handler(message):
     db = load_db()
     user = get_user(db, message.from_user.id)
+    update_username(db, message.from_user)
     
     today = datetime.now().date().isoformat()
     
@@ -204,6 +424,9 @@ def daily_handler(message):
 @bot.message_handler(func=lambda m: m.text == "🧑‍🤝‍🧑 Пригласить друга")
 @subscription_required
 def referral_handler(message):
+    db = load_db()
+    update_username(db, message.from_user)
+    
     user_id = message.from_user.id
     ref_link = f"https://t.me/{BOT_USERNAME}?start={user_id}"
     
@@ -220,6 +443,9 @@ def referral_handler(message):
 @bot.message_handler(func=lambda m: m.text == "🎟 Промокод")
 @subscription_required
 def promocode_handler(message):
+    db = load_db()
+    update_username(db, message.from_user)
+    
     user_states[message.from_user.id] = "waiting_promocode"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("Назад ◀️")
@@ -269,14 +495,15 @@ def promocode_input_handler(message):
 # ==================== ИГРЫ ====================
 def games_keyboard():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.row("🪙 Орёл или решка", "🎲 Кубик")
+    markup.row("🎰 Орёл или решка", "🎲 Кубик")
     markup.row("🎯 Дротик", "🎳 Боулинг")
     markup.row("🏀 Баскетбол", "⚽ Футбол")
+    markup.row("🦔 Пнуть ежа")
     markup.row("Назад ◀️")
     return markup
 
 GAMES_CONFIG = {
-    "🪙 Орёл или решка": {"emoji": "🪙", "win_values": [1, 2], "win_reward": 0.5, "lose_penalty": 0.5, "name": "coin"},
+    "🎰 Орёл или решка": {"emoji": "🎰", "win_values": [1, 22, 43, 64], "win_reward": 0.5, "lose_penalty": 0.5, "name": "slot"},
     "🎲 Кубик": {"emoji": "🎲", "win_values": [6], "win_reward": 2.5, "lose_penalty": 0.5, "name": "dice"},
     "🎯 Дротик": {"emoji": "🎯", "win_values": [6], "win_reward": 2.5, "lose_penalty": 0.5, "name": "darts"},
     "🎳 Боулинг": {"emoji": "🎳", "win_values": [6], "win_reward": 2.5, "lose_penalty": 0.5, "name": "bowling"},
@@ -287,16 +514,20 @@ GAMES_CONFIG = {
 @bot.message_handler(func=lambda m: m.text == "Игры 🕹️")
 @subscription_required
 def games_handler(message):
+    db = load_db()
+    update_username(db, message.from_user)
+    
     text = """🕹️ Игры
 
 Выберите игру. Кулдаун: 1 минута на каждую игру.
 
-🪙 Орёл или решка: 50% +0.5🌟 / 50% -0.5🌟
+🎰 Орёл или решка: 50% +0.5🌟 / 50% -0.5🌟
 🎲 Кубик: выпадет 6 = +2.5🌟, иначе -0.5🌟
 🎯 Дротик: яблочко = +2.5🌟, иначе -0.5🌟
 🎳 Боулинг: страйк = +2.5🌟, иначе -0.5🌟
 🏀 Баскетбол: попал = +2.0🌟, иначе -0.5🌟
-⚽ Футбол: гол = +1.0🌟, иначе -0.5🌟"""
+⚽ Футбол: гол = +1.0🌟, иначе -0.5🌟
+🦔 Пнуть ежа: 50% +200% ставки / 50% -ставка"""
     
     bot.send_message(message.chat.id, text, reply_markup=games_keyboard())
 
@@ -306,6 +537,8 @@ def game_handler(message):
     db = load_db()
     user_id = str(message.from_user.id)
     user = get_user(db, user_id)
+    update_username(db, message.from_user)
+    
     game_config = GAMES_CONFIG[message.text]
     game_name = game_config["name"]
     
@@ -322,8 +555,6 @@ def game_handler(message):
         bot.send_message(message.chat.id, f"❌ Недостаточно звёзд для игры! Нужно минимум {game_config['lose_penalty']}🌟")
         return
     
-    if "cooldowns" not in user:
-        user["cooldowns"] = {}
     user["cooldowns"][game_name] = now
     save_db(db)
     
@@ -346,10 +577,99 @@ def game_handler(message):
     time.sleep(4)
     bot.send_message(message.chat.id, result_text)
 
+# ==================== ПНУТЬ ЕЖА ====================
+@bot.message_handler(func=lambda m: m.text == "🦔 Пнуть ежа")
+@subscription_required
+def hedgehog_handler(message):
+    db = load_db()
+    user = get_user(db, message.from_user.id)
+    update_username(db, message.from_user)
+    
+    # Проверка кулдауна
+    cooldowns = user.get("cooldowns", {})
+    last_play = cooldowns.get("hedgehog", 0)
+    now = time.time()
+    
+    if now - last_play < 60:
+        remaining = int(60 - (now - last_play))
+        bot.send_message(message.chat.id, f"⏳ Подождите ещё {remaining} сек. перед следующей игрой!")
+        return
+    
+    user_states[message.from_user.id] = "waiting_hedgehog_bet"
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("1", "5", "10")
+    markup.row("25", "50", "100")
+    markup.row("Назад ◀️")
+    
+    text = f"""🦔 Пнуть ежа
+
+💫 Ваш баланс: {user['balance']}🌟
+
+Выберите ставку или введите свою:
+• Победа (50%): +200% от ставки
+• Проигрыш (50%): ёж мстит, -ставка"""
+    
+    bot.send_message(message.chat.id, text, reply_markup=markup)
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "waiting_hedgehog_bet")
+@subscription_required
+def hedgehog_bet_handler(message):
+    if message.text == "Назад ◀️":
+        user_states.pop(message.from_user.id, None)
+        games_handler(message)
+        return
+    
+    try:
+        bet = float(message.text)
+        if bet <= 0:
+            bot.send_message(message.chat.id, "❌ Ставка должна быть больше 0!")
+            return
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Введите число!")
+        return
+    
+    db = load_db()
+    user_id = str(message.from_user.id)
+    user = get_user(db, user_id)
+    
+    if user["balance"] < bet:
+        bot.send_message(message.chat.id, f"❌ Недостаточно звёзд! У вас {user['balance']}🌟")
+        return
+    
+    user_states.pop(message.from_user.id, None)
+    
+    # Обновляем кулдаун
+    user["cooldowns"]["hedgehog"] = time.time()
+    save_db(db)
+    
+    # Игра
+    bot.send_message(message.chat.id, "🦶 Вы замахиваетесь на ежа...")
+    time.sleep(2)
+    
+    win = random.random() < 0.5
+    
+    db = load_db()
+    user = get_user(db, user_id)
+    
+    if win:
+        winnings = bet * 2
+        user["balance"] += winnings
+        result_text = f"🎉 Вы пнули ежа! Он улетел!\n\n💰 Выигрыш: +{winnings}🌟\n💫 Баланс: {user['balance']}🌟"
+    else:
+        user["balance"] -= bet
+        user["balance"] = max(0, user["balance"])
+        result_text = f"🦔💢 Ёж разозлился и отомстил!\n\n😔 Проигрыш: -{bet}🌟\n💫 Баланс: {user['balance']}🌟"
+    
+    save_db(db)
+    bot.send_message(message.chat.id, result_text, reply_markup=games_keyboard())
+
 # ==================== ТЕХПОДДЕРЖКА ====================
 @bot.message_handler(func=lambda m: m.text == "Техподдержка 💫")
 @subscription_required
 def support_handler(message):
+    db = load_db()
+    update_username(db, message.from_user)
+    
     text = """💫 Техподдержка
 
 По всем вопросам вы можете написать нашим администраторам:
@@ -371,6 +691,7 @@ def withdraw_keyboard():
 def withdraw_handler(message):
     db = load_db()
     user = get_user(db, message.from_user.id)
+    update_username(db, message.from_user)
     
     if user["balance"] < 50:
         bot.send_message(
@@ -393,6 +714,7 @@ def withdraw_amount_handler(message):
     db = load_db()
     user_id = str(message.from_user.id)
     user = get_user(db, user_id)
+    update_username(db, message.from_user)
     
     amount = 50 if "50" in message.text else 100
     
@@ -404,9 +726,6 @@ def withdraw_amount_handler(message):
     
     reg_date = datetime.fromisoformat(user["registered"])
     days_in_bot = (datetime.now() - reg_date).days
-    
-    if "withdrawals" not in db:
-        db["withdrawals"] = {}
     
     db["withdrawals"][withdrawal_id] = {
         "user_id": user_id,
@@ -564,6 +883,7 @@ def withdrawal_callback(call):
 def broadcast_handler(message):
     db = load_db()
     user = get_user(db, message.from_user.id)
+    update_username(db, message.from_user)
     
     if not is_admin(message.from_user) and user["balance"] < 10:
         bot.send_message(message.chat.id, f"❌ Для рассылки нужно 10🌟\n💫 Ваш баланс: {user['balance']}🌟")
@@ -631,7 +951,7 @@ def admin_keyboard():
     markup.row("💰 Баланс", "➕ Добавить звёзды")
     markup.row("➖ Убрать звёзды", "🎟 Создать промокод")
     markup.row("📢 Админ-рассылка", "📊 Статистика")
-    markup.row("📺 Каналы")
+    markup.row("📺 Каналы", "🔗 Ссылки")
     markup.row("Назад ◀️")
     return markup
 
@@ -649,10 +969,11 @@ def stats_handler(message):
     
     db = load_db()
     total_users = len(db["users"])
-    total_balance = sum(u["balance"] for u in db["users"].values())
-    total_withdrawn = sum(u["withdrawn"] for u in db["users"].values())
+    total_balance = sum(u.get("balance", 0) for u in db["users"].values())
+    total_withdrawn = sum(u.get("withdrawn", 0) for u in db["users"].values())
     banned_count = len(db.get("banned", []))
     channels_count = len(db.get("channels", []))
+    links_count = len(db.get("links", {}))
     
     text = f"""📊 Статистика бота
 
@@ -660,7 +981,8 @@ def stats_handler(message):
 🚫 Заблокировано: {banned_count}
 💫 Всего звёзд на балансах: {total_balance}🌟
 🤑 Всего выведено: {total_withdrawn}🌟
-📺 Каналов для подписки: {channels_count}"""
+📺 Каналов для подписки: {channels_count}
+🔗 Обязательных ссылок: {links_count}"""
     
     bot.send_message(message.chat.id, text)
 
@@ -724,17 +1046,13 @@ def add_channel_input_handler(message):
     db = load_db()
     channel = message.text.strip()
     
-    # Проверяем, что бот админ канала
     try:
         chat = bot.get_chat(channel)
-        member = bot.get_chat_member(channel, bot.get_me().id)
+        member = bot.get_chat_member(channel, BOT_ID)
         
         if member.status not in ["administrator", "creator"]:
             bot.send_message(message.chat.id, "❌ Бот должен быть администратором канала!")
             return
-        
-        if "channels" not in db:
-            db["channels"] = []
         
         channel_id = chat.id
         
@@ -750,7 +1068,7 @@ def add_channel_input_handler(message):
         channels_handler(message)
         
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка: не удалось найти канал или бот не является его администратором.\n\nПодробности: {str(e)}")
+        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
 
 @bot.message_handler(func=lambda m: m.text == "➖ Удалить канал")
 def remove_channel_handler(message):
@@ -789,23 +1107,128 @@ def delete_channel_callback(call):
         save_db(db)
         bot.answer_callback_query(call.id, "✅ Канал удалён!")
         bot.delete_message(call.message.chat.id, call.message.message_id)
-        
-        # Показываем обновлённый список
-        channels = db.get("channels", [])
-        if channels:
-            channels_list = ""
-            for i, ch in enumerate(channels, 1):
-                try:
-                    chat = bot.get_chat(ch)
-                    channels_list += f"{i}. {chat.title} ({ch})\n"
-                except:
-                    channels_list += f"{i}. {ch} (недоступен)\n"
-        else:
-            channels_list = "Список пуст"
-        
-        bot.send_message(call.message.chat.id, f"📺 Текущие каналы:\n{channels_list}")
     else:
         bot.answer_callback_query(call.id, "❌ Канал не найден!")
+
+# ==================== УПРАВЛЕНИЕ ССЫЛКАМИ ====================
+@bot.message_handler(func=lambda m: m.text == "🔗 Ссылки")
+def links_handler(message):
+    if not is_admin(message.from_user):
+        return
+    
+    db = load_db()
+    links = db.get("links", {})
+    
+    if links:
+        links_list = ""
+        for i, (link_id, link_data) in enumerate(links.items(), 1):
+            clicks = len([u for u in db["users"].values() if link_id in u.get("clicked_links", [])])
+            links_list += f"{i}. {link_data.get('name', 'Ссылка')} - {clicks} переходов\n   {link_data['url']}\n"
+    else:
+        links_list = "Список пуст"
+    
+    text = f"""🔗 Управление ссылками
+
+Обязательные ссылки для перехода:
+{links_list}
+
+Выберите действие:"""
+    
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("➕ Добавить ссылку", "➖ Удалить ссылку")
+    markup.row("Назад ◀️")
+    
+    bot.send_message(message.chat.id, text, reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "➕ Добавить ссылку")
+def add_link_handler(message):
+    if not is_admin(message.from_user):
+        return
+    
+    user_states[message.from_user.id] = "admin_add_link_name"
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("Назад ◀️")
+    
+    bot.send_message(message.chat.id, "➕ Введите название ссылки (будет показано пользователям):", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "admin_add_link_name")
+def add_link_name_handler(message):
+    if message.text == "Назад ◀️":
+        user_states.pop(message.from_user.id, None)
+        links_handler(message)
+        return
+    
+    user_states[message.from_user.id] = {"state": "admin_add_link_url", "name": message.text}
+    bot.send_message(message.chat.id, "🔗 Теперь отправьте URL ссылки:")
+
+@bot.message_handler(func=lambda m: isinstance(user_states.get(m.from_user.id), dict) and user_states.get(m.from_user.id, {}).get("state") == "admin_add_link_url")
+def add_link_url_handler(message):
+    if message.text == "Назад ◀️":
+        user_states.pop(message.from_user.id, None)
+        links_handler(message)
+        return
+    
+    url = message.text.strip()
+    name = user_states[message.from_user.id]["name"]
+    
+    # Генерируем уникальный ID для ссылки
+    link_id = hashlib.md5(f"{url}{time.time()}".encode()).hexdigest()[:8]
+    
+    db = load_db()
+    db["links"][link_id] = {
+        "url": url,
+        "name": name,
+        "created": datetime.now().isoformat()
+    }
+    save_db(db)
+    
+    user_states.pop(message.from_user.id, None)
+    
+    tracking_url = f"https://t.me/{BOT_USERNAME}?start=link_{link_id}"
+    
+    bot.send_message(
+        message.chat.id,
+        f"✅ Ссылка добавлена!\n\n📝 Название: {name}\n🔗 URL: {url}\n\n📊 Трекинговая ссылка (для отслеживания):\n{tracking_url}"
+    )
+    links_handler(message)
+
+@bot.message_handler(func=lambda m: m.text == "➖ Удалить ссылку")
+def remove_link_handler(message):
+    if not is_admin(message.from_user):
+        return
+    
+    db = load_db()
+    links = db.get("links", {})
+    
+    if not links:
+        bot.send_message(message.chat.id, "❌ Список ссылок пуст!")
+        return
+    
+    markup = types.InlineKeyboardMarkup()
+    for link_id, link_data in links.items():
+        markup.add(types.InlineKeyboardButton(
+            f"🗑 {link_data.get('name', 'Ссылка')}",
+            callback_data=f"dellink_{link_id}"
+        ))
+    
+    bot.send_message(message.chat.id, "Выберите ссылку для удаления:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("dellink_"))
+def delete_link_callback(call):
+    if not is_admin(call.from_user):
+        bot.answer_callback_query(call.id, "❌ Только для админов!")
+        return
+    
+    db = load_db()
+    link_id = call.data.split("_")[1]
+    
+    if link_id in db.get("links", {}):
+        del db["links"][link_id]
+        save_db(db)
+        bot.answer_callback_query(call.id, "✅ Ссылка удалена!")
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+    else:
+        bot.answer_callback_query(call.id, "❌ Ссылка не найдена!")
 
 # ==================== БАН / РАЗБАН ====================
 @bot.message_handler(func=lambda m: m.text == "🚫 Бан")
@@ -816,7 +1239,7 @@ def ban_handler(message):
     user_states[message.from_user.id] = "admin_ban"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("Назад ◀️")
-    bot.send_message(message.chat.id, "Введите ID или @username пользователя для бана:", reply_markup=markup)
+    bot.send_message(message.chat.id, "Введите ID пользователя для бана:", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "admin_ban")
 def ban_input_handler(message):
@@ -826,23 +1249,15 @@ def ban_input_handler(message):
         return
     
     db = load_db()
-    target = message.text.strip().replace("@", "").lower()
+    target_id = message.text.strip()
     
-    target_id = None
-    if target.isdigit():
-        target_id = target
-    else:
-        for uid, udata in db["users"].items():
-            if udata.get("username", "").lower() == target:
-                target_id = uid
-                break
-    
-    if not target_id or target_id not in db["users"]:
-        bot.send_message(message.chat.id, "❌ Пользователь не найден!")
+    if not target_id.isdigit():
+        bot.send_message(message.chat.id, "❌ Введите ID пользователя (только цифры)!")
         return
     
-    if "banned" not in db:
-        db["banned"] = []
+    if target_id not in db["users"]:
+        bot.send_message(message.chat.id, "❌ Пользователь не найден в базе!")
+        return
     
     if target_id not in db["banned"]:
         db["banned"].append(target_id)
@@ -862,7 +1277,7 @@ def unban_handler(message):
     user_states[message.from_user.id] = "admin_unban"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("Назад ◀️")
-    bot.send_message(message.chat.id, "Введите ID или @username пользователя для разбана:", reply_markup=markup)
+    bot.send_message(message.chat.id, "Введите ID пользователя для разбана:", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "admin_unban")
 def unban_input_handler(message):
@@ -872,18 +1287,13 @@ def unban_input_handler(message):
         return
     
     db = load_db()
-    target = message.text.strip().replace("@", "").lower()
+    target_id = message.text.strip()
     
-    target_id = None
-    if target.isdigit():
-        target_id = target
-    else:
-        for uid, udata in db["users"].items():
-            if udata.get("username", "").lower() == target:
-                target_id = uid
-                break
+    if not target_id.isdigit():
+        bot.send_message(message.chat.id, "❌ Введите ID пользователя (только цифры)!")
+        return
     
-    if target_id and target_id in db.get("banned", []):
+    if target_id in db["banned"]:
         db["banned"].remove(target_id)
         save_db(db)
         bot.send_message(message.chat.id, f"✅ Пользователь {target_id} разблокирован!")
@@ -893,7 +1303,7 @@ def unban_input_handler(message):
     user_states.pop(message.from_user.id, None)
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=admin_keyboard())
 
-# ==================== БАЛАНС / ЗВЁЗДЫ ====================
+# ==================== БАЛАНС ====================
 @bot.message_handler(func=lambda m: m.text == "💰 Баланс")
 def check_balance_handler(message):
     if not is_admin(message.from_user):
@@ -902,7 +1312,7 @@ def check_balance_handler(message):
     user_states[message.from_user.id] = "admin_check_balance"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("Назад ◀️")
-    bot.send_message(message.chat.id, "Введите ID или @username пользователя:", reply_markup=markup)
+    bot.send_message(message.chat.id, "Введите ID пользователя:", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "admin_check_balance")
 def check_balance_input_handler(message):
@@ -912,18 +1322,13 @@ def check_balance_input_handler(message):
         return
     
     db = load_db()
-    target = message.text.strip().replace("@", "").lower()
+    target_id = message.text.strip()
     
-    target_id = None
-    if target.isdigit():
-        target_id = target
-    else:
-        for uid, udata in db["users"].items():
-            if udata.get("username", "").lower() == target:
-                target_id = uid
-                break
+    if not target_id.isdigit():
+        bot.send_message(message.chat.id, "❌ Введите ID пользователя (только цифры)!")
+        return
     
-    if not target_id or target_id not in db["users"]:
+    if target_id not in db["users"]:
         bot.send_message(message.chat.id, "❌ Пользователь не найден!")
         return
     
@@ -931,15 +1336,16 @@ def check_balance_input_handler(message):
     text = f"""💰 Информация о пользователе
 
 🆔 ID: {target_id}
-👤 Username: @{user.get('username', 'нет')}
-💫 Баланс: {user['balance']}🌟
-🧑‍🤝‍🧑 Рефералов: {user['referrals']}
-🤑 Выведено: {user['withdrawn']}🌟"""
+👤 Username: @{user.get('username') or 'нет'}
+💫 Баланс: {user.get('balance', 0)}🌟
+🧑‍🤝‍🧑 Рефералов: {user.get('referrals', 0)}
+🤑 Выведено: {user.get('withdrawn', 0)}🌟"""
     
     bot.send_message(message.chat.id, text)
     user_states.pop(message.from_user.id, None)
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=admin_keyboard())
 
+# ==================== ДОБАВИТЬ ЗВЁЗДЫ ====================
 @bot.message_handler(func=lambda m: m.text == "➕ Добавить звёзды")
 def add_stars_handler(message):
     if not is_admin(message.from_user):
@@ -948,7 +1354,7 @@ def add_stars_handler(message):
     user_states[message.from_user.id] = "admin_add_stars"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("Назад ◀️")
-    bot.send_message(message.chat.id, "Введите ID/username и количество звёзд через пробел:\nПример: @username 100", reply_markup=markup)
+    bot.send_message(message.chat.id, "Введите ID пользователя и количество звёзд через пробел:\nПример: 123456789 100", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "admin_add_stars")
 def add_stars_input_handler(message):
@@ -959,28 +1365,23 @@ def add_stars_input_handler(message):
     
     try:
         parts = message.text.strip().split()
-        target = parts[0].replace("@", "").lower()
+        target_id = parts[0]
         amount = float(parts[1])
+        
+        if not target_id.isdigit():
+            bot.send_message(message.chat.id, "❌ ID должен содержать только цифры!")
+            return
     except:
-        bot.send_message(message.chat.id, "❌ Неверный формат! Пример: @username 100")
+        bot.send_message(message.chat.id, "❌ Неверный формат! Пример: 123456789 100")
         return
     
     db = load_db()
     
-    target_id = None
-    if target.isdigit():
-        target_id = target
-    else:
-        for uid, udata in db["users"].items():
-            if udata.get("username", "").lower() == target:
-                target_id = uid
-                break
-    
-    if not target_id or target_id not in db["users"]:
+    if target_id not in db["users"]:
         bot.send_message(message.chat.id, "❌ Пользователь не найден!")
         return
     
-    db["users"][target_id]["balance"] += amount
+    db["users"][target_id]["balance"] = db["users"][target_id].get("balance", 0) + amount
     save_db(db)
     
     bot.send_message(message.chat.id, f"✅ Добавлено {amount}🌟 пользователю {target_id}\n💫 Новый баланс: {db['users'][target_id]['balance']}🌟")
@@ -988,6 +1389,7 @@ def add_stars_input_handler(message):
     user_states.pop(message.from_user.id, None)
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=admin_keyboard())
 
+# ==================== УБРАТЬ ЗВЁЗДЫ ====================
 @bot.message_handler(func=lambda m: m.text == "➖ Убрать звёзды")
 def remove_stars_handler(message):
     if not is_admin(message.from_user):
@@ -996,7 +1398,7 @@ def remove_stars_handler(message):
     user_states[message.from_user.id] = "admin_remove_stars"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("Назад ◀️")
-    bot.send_message(message.chat.id, "Введите ID/username и количество звёзд через пробел:\nПример: @username 50", reply_markup=markup)
+    bot.send_message(message.chat.id, "Введите ID пользователя и количество звёзд через пробел:\nПример: 123456789 50", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: user_states.get(m.from_user.id) == "admin_remove_stars")
 def remove_stars_input_handler(message):
@@ -1007,29 +1409,23 @@ def remove_stars_input_handler(message):
     
     try:
         parts = message.text.strip().split()
-        target = parts[0].replace("@", "").lower()
+        target_id = parts[0]
         amount = float(parts[1])
+        
+        if not target_id.isdigit():
+            bot.send_message(message.chat.id, "❌ ID должен содержать только цифры!")
+            return
     except:
-        bot.send_message(message.chat.id, "❌ Неверный формат! Пример: @username 50")
+        bot.send_message(message.chat.id, "❌ Неверный формат! Пример: 123456789 50")
         return
     
     db = load_db()
     
-    target_id = None
-    if target.isdigit():
-        target_id = target
-    else:
-        for uid, udata in db["users"].items():
-            if udata.get("username", "").lower() == target:
-                target_id = uid
-                break
-    
-    if not target_id or target_id not in db["users"]:
+    if target_id not in db["users"]:
         bot.send_message(message.chat.id, "❌ Пользователь не найден!")
         return
     
-    db["users"][target_id]["balance"] -= amount
-    db["users"][target_id]["balance"] = max(0, db["users"][target_id]["balance"])
+    db["users"][target_id]["balance"] = max(0, db["users"][target_id].get("balance", 0) - amount)
     save_db(db)
     
     bot.send_message(message.chat.id, f"✅ Убрано {amount}🌟 у пользователя {target_id}\n💫 Новый баланс: {db['users'][target_id]['balance']}🌟")
@@ -1065,9 +1461,6 @@ def create_promo_input_handler(message):
         return
     
     db = load_db()
-    
-    if "promocodes" not in db:
-        db["promocodes"] = {}
     
     db["promocodes"][code] = {
         "stars": stars,
@@ -1122,11 +1515,12 @@ def admin_broadcast_text_handler(message):
 @bot.callback_query_handler(func=lambda call: call.data == "check_sub")
 def check_sub_callback(call):
     not_subscribed = check_subscription(call.from_user.id)
+    not_clicked = check_links(call.from_user.id)
     
-    if not_subscribed:
-        bot.answer_callback_query(call.id, "❌ Вы ещё не подписались на все каналы!")
+    if not_subscribed or not_clicked:
+        bot.answer_callback_query(call.id, "❌ Выполните все условия!")
     else:
-        bot.answer_callback_query(call.id, "✅ Спасибо за подписку!")
+        bot.answer_callback_query(call.id, "✅ Все условия выполнены!")
         bot.delete_message(call.message.chat.id, call.message.message_id)
         
         db = load_db()
@@ -1140,5 +1534,5 @@ def check_sub_callback(call):
 
 # ==================== ЗАПУСК ====================
 if __name__ == "__main__":
-    print("🤖 Бот запущен!")
+    print(f"🤖 Бот @{BOT_USERNAME} запущен!")
     bot.infinity_polling()
