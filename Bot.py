@@ -8,7 +8,7 @@ import hashlib
 from datetime import datetime, timedelta
 
 # ==================== НАСТРОЙКИ ====================
-BOT_TOKEN = "8348786219:AAFW5wY-XNhpaeoEgXuuBf28UVbz7Uy8Ngk"
+BOT_TOKEN = "8348786219:AAEfL5BnDvKQlFXqUBqWcSauYWeNN5hShaw"
 
 ADMINS_USERNAMES = ["ww13kelm", "monster_psy", "venter8", "asd123dad"]
 ADMIN_IDS = []
