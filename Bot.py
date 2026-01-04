@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 # ==================== НАСТРОЙКИ ====================
-BOT_TOKEN = "ВАШ_ТОКЕН_СЮДА"
+BOT_TOKEN = "8348786219:AAFW5wY-XNhpaeoEgXuuBf28UVbz7Uy8Ngk"
 BOT_USERNAME = "giftskelms_bot"
 
 ADMINS_USERNAMES = ["ww13kelm", "monster_psy", "venter8"]
