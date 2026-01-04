@@ -1,0 +1,306 @@
+{
+  "users": {
+    "8468074281": {
+      "balance": 3.0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {
+        "coin": 1767512840.679476
+      },
+      "registered": "2026-01-04T07:37:57.161986",
+      "username": "Asd123dad"
+    },
+    "7040380265": {
+      "balance": 1.0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {
+        "coin": 1767512731.9145772,
+        "dice": 1767512735.9596498,
+        "darts": 1767512740.3182623,
+        "bowling": 1767512740.535203,
+        "basketball": 1767512748.946236,
+        "football": 1767512749.0500183
+      },
+      "registered": "2026-01-04T07:39:01.991912",
+      "username": "venter8"
+    },
+    "7007454458": {
+      "balance": 5.5,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {
+        "basketball": 1767514690.9350483,
+        "football": 1767514658.080403,
+        "bowling": 1767512676.4045193,
+        "coin": 1767514661.0925145,
+        "dice": 1767514684.566027,
+        "darts": 1767514698.225959
+      },
+      "registered": "2026-01-04T07:40:23.393344",
+      "username": "ww13kelm"
+    },
+    "7756596477": {
+      "balance": 28.5,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {
+        "basketball": 1767514536.2560377,
+        "bowling": 1767514531.827378,
+        "football": 1767514534.2965128,
+        "darts": 1767514538.7543237,
+        "coin": 1767514580.7434602,
+        "dice": 1767514529.832161
+      },
+      "registered": "2026-01-04T07:41:14.984832",
+      "username": "Inever3kkk"
+    },
+    "5959060499": {
+      "balance": 2.5,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {
+        "basketball": 1767512627.1449075,
+        "dice": 1767512639.514691,
+        "coin": 1767512646.4213972,
+        "football": 1767512656.4130497,
+        "darts": 1767512672.7927113
+      },
+      "registered": "2026-01-04T07:42:07.677210",
+      "username": "GREENFLAG999"
+    },
+    "7514109744": {
+      "balance": 21.5,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {
+        "basketball": 1767514072.1464162,
+        "football": 1767514079.5949821,
+        "darts": 1767514059.8541968,
+        "bowling": 1767514064.7102368,
+        "dice": 1767514054.8585098,
+        "coin": 1767514051.7332747
+      },
+      "registered": "2026-01-04T07:42:12.343901",
+      "username": "Vladislav_Escobar"
+    },
+    "6584582541": {
+      "balance": 24.5,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {
+        "coin": 1767515127.6773393,
+        "basketball": 1767516559.652647,
+        "dice": 1767516564.7626374,
+        "bowling": 1767516565.715692,
+        "darts": 1767516556.061195,
+        "football": 1767516569.472144
+      },
+      "registered": "2026-01-04T07:47:40.026788",
+      "username": "MONSTER_PSY"
+    },
+    "2118234478": {
+      "balance": 0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T07:51:48.340577",
+      "username": "Arteemmp"
+    },
+    "8053271148": {
+      "balance": 0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T07:53:11.250258",
+      "username": "Im_unrealGirl"
+    },
+    "7531228992": {
+      "balance": 34.5,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {
+        "darts": 1767514813.6391177,
+        "bowling": 1767514794.159246,
+        "basketball": 1767514781.0871677,
+        "dice": 1767514787.879374,
+        "coin": 1767514799.9006648,
+        "football": 1767514806.3779194
+      },
+      "registered": "2026-01-04T08:11:22.877745",
+      "username": null
+    },
+    "5277519568": {
+      "balance": 25.5,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {
+        "football": 1767516126.2373395,
+        "dice": 1767516152.327471,
+        "basketball": 1767516135.3099623,
+        "bowling": 1767516158.402084,
+        "coin": 1767516122.2711854,
+        "darts": 1767516141.9429367
+      },
+      "registered": "2026-01-04T08:14:32.489828",
+      "username": null
+    },
+    "7594220640": {
+      "balance": 0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T08:17:15.730474",
+      "username": null
+    },
+    "6285593244": {
+      "balance": 11.5,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": null,
+      "cooldowns": {
+        "football": 1767516502.0511756,
+        "dice": 1767515467.130498,
+        "basketball": 1767516449.163396,
+        "bowling": 1767515551.141285,
+        "coin": 1767516464.8625407
+      },
+      "registered": "2026-01-04T08:28:39.079827",
+      "username": null
+    },
+    "8318656363": {
+      "balance": 1,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "cooldowns": {},
+      "registered": "2026-01-04T08:43:44.468227",
+      "username": null
+    }
+  },
+  "promocodes": {
+    "FREE": {
+      "stars": 2.0,
+      "activations": 0,
+      "used_by": [
+        "7756596477",
+        "7514109744",
+        "5959060499",
+        "7007454458",
+        "8468074281"
+      ]
+    },
+    "BONUS": {
+      "stars": 10.0,
+      "activations": 94,
+      "used_by": [
+        "6584582541",
+        "7756596477",
+        "7514109744",
+        "5277519568",
+        "6285593244",
+        "8468074281"
+      ]
+    },
+    "DER": {
+      "stars": 67.0,
+      "activations": 0,
+      "used_by": [
+        "6584582541"
+      ]
+    },
+    "TON": {
+      "stars": 2.0,
+      "activations": 10,
+      "used_by": []
+    },
+    "HIGHLOUD": {
+      "stars": 30.0,
+      "activations": 0,
+      "used_by": [
+        "7531228992"
+      ]
+    }
+  },
+  "withdrawals": {
+    "1767512393157": {
+      "user_id": "7040380265",
+      "username": "venter8",
+      "amount": 50,
+      "status": "pending",
+      "admin_actions": {
+        "7040380265": "declined"
+      },
+      "created": "2026-01-04T07:39:53.157551"
+    },
+    "1767512804613": {
+      "user_id": "7007454458",
+      "username": "ww13kelm",
+      "amount": 100,
+      "status": "pending",
+      "admin_actions": {},
+      "created": "2026-01-04T07:46:44.613385"
+    },
+    "1767512967297": {
+      "user_id": "7040380265",
+      "username": "venter8",
+      "amount": 50,
+      "status": "accepted",
+      "admin_actions": {
+        "7007454458": "accepted"
+      },
+      "created": "2026-01-04T07:49:27.297652"
+    },
+    "1767513067014": {
+      "user_id": "6584582541",
+      "username": "MONSTER_PSY",
+      "amount": 50,
+      "status": "accepted",
+      "admin_actions": {
+        "6584582541": "accepted"
+      },
+      "created": "2026-01-04T07:51:07.014682"
+    },
+    "1767513834022": {
+      "user_id": "6584582541",
+      "username": "MONSTER_PSY",
+      "amount": 100,
+      "status": "accepted",
+      "admin_actions": {
+        "6584582541": "accepted"
+      },
+      "created": "2026-01-04T08:03:54.022227"
+    }
+  },
+  "banned": [],
+  "channels": [
+    -1003554758206,
+    -1002562344021
+  ]
+}
