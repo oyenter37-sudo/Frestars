@@ -1,8 +1,8 @@
 {
   "users": {
     "8468074281": {
-      "balance": 4.5,
-      "referrals": 0,
+      "balance": 1015.5,
+      "referrals": 8,
       "withdrawn": 0,
       "referrer": "7040380265",
       "last_daily": "2026-01-04",
@@ -15,7 +15,12 @@
       "username": "Asd123dad",
       "clicked_links": [
         "8f57a99b"
-      ]
+      ],
+      "pieces": 7740,
+      "last_withdraw": null,
+      "premium_until": "2026-01-05T15:03:42.720324",
+      "custom_emoji": null,
+      "custom_title": null
     },
     "7040380265": {
       "balance": 2e+88,
@@ -36,13 +41,18 @@
       "username": "venter8",
       "clicked_links": [
         "8f57a99b"
-      ]
+      ],
+      "pieces": 0,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null
     },
     "7007454458": {
-      "balance": 6.5,
+      "balance": 10032.0,
       "referrals": 0,
       "withdrawn": 0,
-      "referrer": null,
+      "referrer": "8468074281",
       "last_daily": "2026-01-04",
       "cooldowns": {
         "basketball": 1767534025.2053297,
@@ -51,30 +61,44 @@
         "coin": 1767514661.0925145,
         "dice": 1767534032.9571652,
         "darts": 1767514698.225959,
-        "hedgehog": 1767534045.0034184,
+        "hedgehog": 1767542666.3355994,
         "slot": 1767534029.3034086
       },
       "registered": "2026-01-04T07:40:23.393344",
       "username": "ww13kelm",
-      "clicked_links": []
+      "clicked_links": [],
+      "pieces": 9999830000,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null
     },
     "7756596477": {
-      "balance": 28.5,
+      "balance": 445.0,
       "referrals": 0,
       "withdrawn": 0,
-      "referrer": null,
+      "referrer": "8468074281",
       "last_daily": "2026-01-04",
       "cooldowns": {
-        "basketball": 1767520398.2644587,
-        "bowling": 1767520388.433448,
-        "football": 1767520392.5224855,
-        "darts": 1767520403.822173,
+        "basketball": 1767554869.714665,
+        "bowling": 1767554862.9069312,
+        "football": 1767557440.9716747,
+        "darts": 1767554873.3005073,
         "coin": 1767514580.7434602,
-        "dice": 1767520381.677741
+        "dice": 1767557433.6782975,
+        "slot": 1767554874.000457,
+        "hedgehog": 1767554884.0790026
       },
       "registered": "2026-01-04T07:41:14.984832",
       "username": "Inever3kkk",
-      "clicked_links": []
+      "clicked_links": [
+        "8f57a99b"
+      ],
+      "pieces": 3607,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null
     },
     "5959060499": {
       "balance": 2.5,
@@ -93,29 +117,34 @@
       "username": "GREENFLAG999"
     },
     "7514109744": {
-      "balance": 6.5,
+      "balance": 1.0,
       "referrals": 2,
       "withdrawn": 0,
-      "referrer": null,
+      "referrer": "8468074281",
       "last_daily": "2026-01-04",
       "cooldowns": {
-        "basketball": 1767533374.6311865,
-        "football": 1767533376.5525358,
-        "darts": 1767533379.0453873,
-        "bowling": 1767527070.7130032,
-        "dice": 1767533381.0262146,
+        "basketball": 1767556159.9324186,
+        "football": 1767556166.1982841,
+        "darts": 1767556180.1430945,
+        "bowling": 1767556191.4929552,
+        "dice": 1767556218.342203,
         "coin": 1767514051.7332747,
-        "hedgehog": 1767533390.0609572,
+        "hedgehog": 1767556076.08423,
         "slot": 1767525308.3625395
       },
       "registered": "2026-01-04T07:42:12.343901",
       "username": "Vladislav_Escobar",
       "clicked_links": [
         "8f57a99b"
-      ]
+      ],
+      "pieces": 615,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null
     },
     "6584582541": {
-      "balance": 381.0,
+      "balance": 1000.0,
       "referrals": 0,
       "withdrawn": 0,
       "referrer": null,
@@ -128,21 +157,32 @@
         "darts": 1767523820.536664,
         "football": 1767518707.11404,
         "slot": 1767523824.9023843,
-        "hedgehog": 1767532786.5742702
+        "hedgehog": 1767541160.8282177
       },
       "registered": "2026-01-04T07:47:40.026788",
       "username": "MONSTER_PSY",
-      "clicked_links": []
+      "clicked_links": [],
+      "pieces": 0,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null
     },
     "2118234478": {
       "balance": 0,
       "referrals": 0,
       "withdrawn": 0,
-      "referrer": null,
+      "referrer": "8468074281",
       "last_daily": null,
       "cooldowns": {},
       "registered": "2026-01-04T07:51:48.340577",
-      "username": "Arteemmp"
+      "username": "Arteemmp",
+      "pieces": 0,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": []
     },
     "8053271148": {
       "balance": 0,
@@ -155,27 +195,34 @@
       "username": "Im_unrealGirl"
     },
     "7531228992": {
-      "balance": 5.5,
+      "balance": 314.0,
       "referrals": 0,
       "withdrawn": 0,
-      "referrer": null,
+      "referrer": "8468074281",
       "last_daily": "2026-01-04",
       "cooldowns": {
-        "darts": 1767514813.6391177,
-        "bowling": 1767514794.159246,
-        "basketball": 1767514781.0871677,
-        "dice": 1767514787.879374,
+        "darts": 1767551280.632388,
+        "bowling": 1767551286.5211878,
+        "basketball": 1767551283.7835965,
+        "dice": 1767551227.2858763,
         "coin": 1767514799.9006648,
-        "football": 1767514806.3779194
+        "football": 1767551288.468965,
+        "slot": 1767551279.0834355,
+        "hedgehog": 1767551376.4212964
       },
       "registered": "2026-01-04T08:11:22.877745",
       "username": "S_Wl00",
       "clicked_links": [
         "8f57a99b"
-      ]
+      ],
+      "pieces": 7740,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null
     },
     "5277519568": {
-      "balance": 9.989291723480886e+45,
+      "balance": 0,
       "referrals": 0,
       "withdrawn": 0,
       "referrer": null,
@@ -205,28 +252,40 @@
       "cooldowns": {},
       "registered": "2026-01-04T08:17:15.730474",
       "username": "okak_okao",
-      "clicked_links": []
+      "clicked_links": [
+        "8f57a99b"
+      ],
+      "pieces": 1000,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null
     },
     "6285593244": {
-      "balance": 32.5,
+      "balance": 128.0,
       "referrals": 0,
       "withdrawn": 0,
       "referrer": null,
       "last_daily": null,
       "cooldowns": {
-        "football": 1767533966.7568874,
+        "football": 1767542667.2745569,
         "dice": 1767515467.130498,
-        "basketball": 1767518934.4999397,
+        "basketball": 1767542675.1569571,
         "bowling": 1767515551.141285,
         "coin": 1767516464.8625407,
-        "hedgehog": 1767533981.928769,
+        "hedgehog": 1767542651.553271,
         "slot": 1767518941.445087
       },
       "registered": "2026-01-04T08:28:39.079827",
       "username": "Yanwja",
       "clicked_links": [
         "8f57a99b"
-      ]
+      ],
+      "pieces": 1000,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null
     },
     "8318656363": {
       "balance": 1,
@@ -320,8 +379,8 @@
       "clicked_links": []
     },
     "7771510244": {
-      "balance": 0,
-      "referrals": 0,
+      "balance": 196.0,
+      "referrals": 1,
       "withdrawn": 0,
       "referrer": "7514109744",
       "last_daily": "2026-01-04",
@@ -331,7 +390,14 @@
       },
       "registered": "2026-01-04T10:17:36.912739",
       "username": "Toxikomin",
-      "clicked_links": []
+      "clicked_links": [
+        "8f57a99b"
+      ],
+      "pieces": 1700,
+      "last_withdraw": null,
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null
     },
     "1752957732": {
       "balance": 0,
@@ -345,6 +411,216 @@
       "clicked_links": [
         "8f57a99b"
       ]
+    },
+    "8492027017": {
+      "balance": 0,
+      "pieces": 0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": "7771510244",
+      "last_daily": null,
+      "last_withdraw": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T15:24:53.580119",
+      "username": "Kira_274825",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": [
+        "8f57a99b"
+      ]
+    },
+    "6397610467": {
+      "balance": 0,
+      "pieces": 0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": null,
+      "last_withdraw": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T15:59:25.670205",
+      "username": "Chikaxgh",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": [
+        "8f57a99b"
+      ]
+    },
+    "8574651767": {
+      "balance": 1000001.0,
+      "pieces": 0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "last_withdraw": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T16:45:46.125933",
+      "username": "kostyaww13",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": [
+        "8f57a99b"
+      ]
+    },
+    "6762238238": {
+      "balance": 5.5,
+      "pieces": 1200,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "last_withdraw": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T18:48:31.275292",
+      "username": "Lolerdu",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": [
+        "8f57a99b"
+      ]
+    },
+    "6132616612": {
+      "balance": 0,
+      "pieces": 98,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": "8468074281",
+      "last_daily": "2026-01-04",
+      "last_withdraw": null,
+      "cooldowns": {
+        "basketball": 1767554127.0010524,
+        "football": 1767554116.1557035,
+        "hedgehog": 1767554157.9186134,
+        "bowling": 1767554148.0322058,
+        "dice": 1767554139.5730155,
+        "darts": 1767554133.65099,
+        "slot": 1767554092.9276025
+      },
+      "registered": "2026-01-04T18:49:34.728586",
+      "username": "AnMi_k",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": [
+        "8f57a99b"
+      ]
+    },
+    "6997318168": {
+      "balance": 0,
+      "pieces": 1400,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": null,
+      "last_withdraw": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T19:33:35.994132",
+      "username": "swordSar",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": [
+        "8f57a99b"
+      ]
+    },
+    "6612638154": {
+      "balance": 0,
+      "pieces": 9257,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": "2026-01-04",
+      "last_withdraw": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T19:33:36.455410",
+      "username": "ecronx",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": [
+        "8f57a99b"
+      ]
+    },
+    "7526512670": {
+      "balance": 0,
+      "pieces": 0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": null,
+      "last_withdraw": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T19:38:28.224514",
+      "username": "parvizwp",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": [
+        "8f57a99b"
+      ]
+    },
+    "6089245402": {
+      "balance": 24.0,
+      "pieces": 44,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": "8468074281",
+      "last_daily": "2026-01-04",
+      "last_withdraw": null,
+      "cooldowns": {
+        "slot": 1767556724.9542801,
+        "dice": 1767556704.2335303,
+        "darts": 1767556741.669071,
+        "bowling": 1767556751.9968836,
+        "basketball": 1767556758.8852582,
+        "football": 1767557404.724017,
+        "hedgehog": 1767556800.282847
+      },
+      "registered": "2026-01-04T19:38:40.870049",
+      "username": "Qloxy",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": [
+        "8f57a99b"
+      ]
+    },
+    "6840523652": {
+      "balance": 0,
+      "pieces": 0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": null,
+      "last_daily": null,
+      "last_withdraw": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T19:41:14.928779",
+      "username": "Vedmak2335",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": []
+    },
+    "8067958644": {
+      "balance": 0,
+      "pieces": 0,
+      "referrals": 0,
+      "withdrawn": 0,
+      "referrer": "8468074281",
+      "last_daily": null,
+      "last_withdraw": null,
+      "cooldowns": {},
+      "registered": "2026-01-04T20:01:14.586311",
+      "username": "POBEdalenD",
+      "premium_until": null,
+      "custom_emoji": null,
+      "custom_title": null,
+      "clicked_links": []
     }
   },
   "promocodes": {
@@ -361,7 +637,7 @@
     },
     "BONUS": {
       "stars": 10.0,
-      "activations": 93,
+      "activations": 91,
       "used_by": [
         "6584582541",
         "7756596477",
@@ -369,7 +645,9 @@
         "5277519568",
         "6285593244",
         "8468074281",
-        "7594220640"
+        "7594220640",
+        "7531228992",
+        "6089245402"
       ]
     },
     "DER": {
@@ -489,8 +767,10 @@
     },
     "SAI5": {
       "stars": 1000.0,
-      "activations": 1,
-      "used_by": []
+      "activations": 0,
+      "used_by": [
+        "6584582541"
+      ]
     },
     "SAI67": {
       "stars": 1e+19,
@@ -515,148 +795,41 @@
         "6285593244",
         "5277519568"
       ]
-    }
-  },
-  "withdrawals": {
-    "1767512393157": {
-      "user_id": "7040380265",
-      "username": "venter8",
-      "amount": 50,
-      "status": "pending",
-      "admin_actions": {
-        "7040380265": "declined"
-      },
-      "created": "2026-01-04T07:39:53.157551"
     },
-    "1767512804613": {
-      "user_id": "7007454458",
-      "username": "ww13kelm",
-      "amount": 100,
-      "status": "pending",
-      "admin_actions": {},
-      "created": "2026-01-04T07:46:44.613385"
+    "GG": {
+      "type": "stars",
+      "stars": 1000.0,
+      "activations": 0,
+      "used_by": [
+        "6584582541"
+      ]
     },
-    "1767512967297": {
-      "user_id": "7040380265",
-      "username": "venter8",
-      "amount": 50,
-      "status": "accepted",
-      "admin_actions": {
-        "7007454458": "accepted"
-      },
-      "created": "2026-01-04T07:49:27.297652"
+    "BONUS1": {
+      "type": "stars",
+      "stars": 100.0,
+      "activations": 0,
+      "used_by": [
+        "7531228992",
+        "6285593244"
+      ]
     },
-    "1767513067014": {
-      "user_id": "6584582541",
-      "username": "MONSTER_PSY",
-      "amount": 50,
-      "status": "accepted",
-      "admin_actions": {
-        "6584582541": "accepted"
-      },
-      "created": "2026-01-04T07:51:07.014682"
+    "GIFTFREE": {
+      "type": "pieces",
+      "pieces": 1000,
+      "activations": 1,
+      "used_by": [
+        "7531228992",
+        "6285593244",
+        "7594220640",
+        "7756596477"
+      ]
     },
-    "1767513834022": {
-      "user_id": "6584582541",
-      "username": "MONSTER_PSY",
-      "amount": 100,
-      "status": "accepted",
-      "admin_actions": {
-        "6584582541": "accepted"
-      },
-      "created": "2026-01-04T08:03:54.022227"
-    },
-    "1767518128462": {
-      "user_id": "6584582541",
-      "username": "MONSTER_PSY",
-      "amount": 50,
-      "status": "accepted",
-      "admin_actions": {
-        "6584582541": "accepted"
-      },
-      "created": "2026-01-04T09:15:28.462674"
-    },
-    "1767518660178": {
-      "user_id": "5277519568",
-      "username": "Engulov",
-      "amount": 50,
-      "status": "accepted",
-      "admin_actions": {
-        "7007454458": "accepted"
-      },
-      "created": "2026-01-04T09:24:20.178136"
-    },
-    "1767518795043": {
-      "user_id": "6584582541",
-      "username": "MONSTER_PSY",
-      "amount": 100,
-      "status": "accepted",
-      "admin_actions": {
-        "6584582541": "accepted"
-      },
-      "created": "2026-01-04T09:26:35.043338"
-    },
-    "1767520090107": {
-      "user_id": "7514109744",
-      "username": "Vladislav_Escobar",
-      "amount": 50,
-      "status": "accepted",
-      "admin_actions": {
-        "6584582541": "accepted"
-      },
-      "created": "2026-01-04T09:48:10.107621"
-    },
-    "1767530513473": {
-      "user_id": "7040380265",
-      "username": "venter8",
-      "amount": 50,
-      "status": "accepted",
-      "admin_actions": {
-        "7040380265": "accepted"
-      },
-      "created": "2026-01-04T12:41:53.473612"
-    },
-    "1767531667045": {
-      "user_id": "7531228992",
-      "username": "S_Wl00",
-      "amount": 100,
-      "status": "pending",
-      "admin_actions": {
-        "7007454458": "declined"
-      },
-      "created": "2026-01-04T13:01:07.045253"
-    },
-    "1767531811285": {
-      "user_id": "5277519568",
-      "username": "Engulov",
-      "amount": 50,
-      "status": "pending",
-      "admin_actions": {
-        "7007454458": "declined"
-      },
-      "created": "2026-01-04T13:03:31.285828"
-    },
-    "1767534011797": {
-      "user_id": "5277519568",
-      "username": "Engulov",
-      "amount": 100,
-      "status": "pending",
-      "admin_actions": {
-        "7007454458": "declined"
-      },
-      "created": "2026-01-04T13:40:11.797680"
-    }
-  },
-  "banned": [],
-  "channels": [
-    -1003554758206,
-    -1002562344021
-  ],
-  "links": {
-    "8f57a99b": {
-      "url": "https://t.me/BearDropBot?start=ref-7040380265",
-      "name": "🤑 Перейти по линку",
-      "created": "2026-01-04T10:43:27.919114"
-    }
-  }
+    "USER380264": {
+      "type": "pieces",
+      "pieces": 100,
+      "activations": 0,
+      "used_by": [
+        "7594220640"
+      ],
+      "creator": "7594220640"
     }
